@@ -246,7 +246,6 @@ static int p_push(int argc, char *argv[])
     sqlite3_bind_text(stmt, 1, argv[2], -1, NULL);
     sqlite3_bind_text(stmt, 2, buf, sz, NULL);
     sqlite3_bind_int(stmt, 3, mtime);
-    free(buf);
 
     rc = sqlite3_step(stmt);
 
@@ -257,6 +256,7 @@ static int p_push(int argc, char *argv[])
     }
     sqlite3_finalize(stmt);
 
+    free(buf);
     weewiki_close(&ww);
     weewiki_clean(&ww);
     return 0;
