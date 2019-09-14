@@ -13,6 +13,7 @@ capabilities.
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "weewiki.h"
 #include "weewiki_private.h"
@@ -45,6 +46,10 @@ int main(int argc, char *argv[])
         argc--;
         argv++;
         return p_pull(argc, argv);
+    } else if (match(argv[1], len, "edit", 4)) {
+        argc--;
+        argv++;
+        return p_edit(argc, argv);
     } else {
         fprintf(stderr,
                 "Could not find command %s\n",
@@ -120,7 +125,8 @@ void weewiki_clean(weewiki_d *ww)
     <<clean>>
 }
 #+END_SRC
-* TODO Database
+* DONE Database
+CLOSED: [2019-09-14 Sat 12:46]
 ** Open
 A database is opened with =weewiki_open=.
 #+NAME: funcdefs
@@ -175,15 +181,162 @@ void weewiki_create_tables(weewiki_d *ww)
     sqlite3_exec(ww->db,
                 "CREATE TABLE IF NOT EXISTS wiki(\n"
                 "key TEXT UNIQUE,\n"
-                "value TEXT,\n"
-                "mtime INTEGER\n"
+                "value TEXT\n"
                 ");\n",
                 NULL,
                 NULL,
                 NULL);
 }
 #+END_SRC
-* TODO Push/Pull
+** Push
+Low level operation that pushes a file to a key.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_push(weewiki_d *ww,
+                 const char *fname,
+                 const char *key);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_push(weewiki_d *ww,
+                 const char *fname,
+                 const char *key)
+{
+    char *buf;
+    size_t sz;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    FILE *fp;
+
+    fp = fopen(fname, "r");
+
+    if (fp == NULL) {
+        fprintf(stderr,
+                "Could not open file %s reading.\n",
+                fname);
+        return 1;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    sz = ftell(fp);
+    buf = calloc(1, sz + 1);
+    fseek(fp, 0, SEEK_SET);
+    fread(buf, 1, sz, fp);
+
+    db = ww->db;
+
+    sqlite3_prepare_v2(db,
+                       "INSERT OR REPLACE INTO wiki"
+                       "(key, value)\n"
+                       "VALUES(?1,?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, buf, sz, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr,
+                "SQLite error: %s\n",
+                sqlite3_errmsg(db));
+         return 1;
+    }
+    sqlite3_finalize(stmt);
+
+    free(buf);
+    return 0;
+}
+#+END_SRC
+** Pull
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_pull(weewiki_d *ww,
+                 const char *key,
+                 const char *fname);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_pull(weewiki_d *ww,
+                 const char *key,
+                 const char *fname)
+{
+    size_t sz;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    FILE *fp;
+
+    fp = fopen(fname, "w");
+    if (fp == NULL) {
+        fprintf(stderr,
+                "Could not open file %s for writing\n",
+                fname);
+        return 1;
+    }
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "SELECT value FROM wiki WHERE(key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) {
+        fprintf(stderr,
+                "Could not find key '%s'\n",
+                key);
+        sqlite3_finalize(stmt);
+        return 1;
+    }
+
+    sz = sqlite3_column_bytes(stmt, 0);
+    fwrite(sqlite3_column_text(stmt, 0), 1, sz, fp);
+    sqlite3_finalize(stmt);
+    fclose(fp);
+    return 0;
+}
+#+END_SRC
+** Exists
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_exists(weewiki_d *ww, const char *key);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_exists(weewiki_d *ww, const char *key)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "SELECT EXISTS("
+                       "SELECT * FROM wiki WHERE(key==?1)"
+                       ");",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+
+    sqlite3_step(stmt);
+
+    rc = sqlite3_column_int(stmt, 0);
+
+    fprintf(stderr, "column is %d\n", rc);
+    sqlite3_finalize(stmt);
+    return rc;
+}
+#+END_SRC
+* DONE Push/Pull
+CLOSED: [2019-09-14 Sat 10:44]
 ** DONE Push
 CLOSED: [2019-09-14 Sat 09:24]
 Pushes a file to database.
@@ -196,13 +349,6 @@ static int p_push(int argc, char *argv[]);
 static int p_push(int argc, char *argv[])
 {
     weewiki_d ww;
-    FILE *fp;
-    char *buf;
-    size_t sz;
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    struct stat statbuf;
-    time_t mtime;
     int rc;
 
     if (argc < 3) {
@@ -214,55 +360,16 @@ static int p_push(int argc, char *argv[])
 
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
-    fp = fopen(argv[1], "r");
 
-    if (fp == NULL) {
-        fprintf(stderr,
-                "Could not open file %s\n",
-                argv[1]);
-        return 1;
-    }
+    rc = weewiki_push(&ww, argv[1], argv[2]);
 
-    fseek(fp, 0, SEEK_END);
-    sz = ftell(fp);
-    buf = calloc(1, sz + 1);
-    fseek(fp, 0, SEEK_SET);
-    fread(buf, 1, sz, fp);
-    fclose(fp);
-    stat(argv[1], &statbuf);
-
-    mtime = statbuf.st_mtime;
-
-    db = ww.db;
-
-    sqlite3_prepare_v2(db,
-                       "INSERT OR REPLACE INTO wiki"
-                       "(key, value, mtime)\n"
-                       "VALUES(?1,?2,?3);",
-                       -1,
-                       &stmt,
-                       NULL);
-
-    sqlite3_bind_text(stmt, 1, argv[2], -1, NULL);
-    sqlite3_bind_text(stmt, 2, buf, sz, NULL);
-    sqlite3_bind_int(stmt, 3, mtime);
-
-    rc = sqlite3_step(stmt);
-
-    if (rc != SQLITE_DONE) {
-        fprintf(stderr,
-                "SQLite error: %s\n",
-                sqlite3_errmsg(db));
-    }
-    sqlite3_finalize(stmt);
-
-    free(buf);
     weewiki_close(&ww);
     weewiki_clean(&ww);
-    return 0;
+    return rc;
 }
 #+END_SRC
-** TODO Pull
+** DONE Pull
+CLOSED: [2019-09-14 Sat 10:16]
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_pull(int argc, char *argv[]);
@@ -272,10 +379,6 @@ static int p_pull(int argc, char *argv[]);
 static int p_pull(int argc, char *argv[])
 {
     weewiki_d ww;
-    FILE *fp;
-    size_t sz;
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
     int rc;
 
     if (argc < 3) {
@@ -288,46 +391,64 @@ static int p_pull(int argc, char *argv[])
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
 
-
-    db = ww.db;
-
-    sqlite3_prepare_v2(db,
-                       "SELECT value FROM wiki WHERE(key==?1);",
-                       -1,
-                       &stmt,
-                       NULL);
-    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
-
-    rc = sqlite3_step(stmt);
-
-    if (rc != SQLITE_ROW) {
-        fprintf(stderr,
-                "Could not find key '%s'\n",
-                argv[1]);
-        sqlite3_finalize(stmt);
-        return 1;
-    }
-
-
-    fp = fopen(argv[2], "w");
-
-    if (fp == NULL) {
-        fprintf(stderr,
-                "Could not open file %s\n",
-                argv[1]);
-        return 1;
-    }
-    sz = sqlite3_column_bytes(stmt, 0);
-    fwrite(sqlite3_column_text(stmt, 0), 1, sz, fp);
-    fclose(fp);
-    sqlite3_finalize(stmt);
+    rc = weewiki_pull(&ww, argv[1], argv[2]);
     weewiki_close(&ww);
     weewiki_clean(&ww);
-    return 0;
+    return rc;
+}
+#+END_SRC
+* DONE Edit
+CLOSED: [2019-09-14 Sat 12:46]
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_edit(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_edit(int argc, char *argv[])
+{
+    weewiki_d ww;
+    char fname[128];
+    char cmd[256];
+    struct tm tm;
+    time_t t;
+    FILE *fp;
+
+    t = time(NULL);
+    tm = *localtime(&t);
+
+    strftime(fname, 128128, "tmp_%m%d%y%H%M%S.org", &tm);
+    fprintf(stderr, "tmpname is %s\n", fname);
+
+    if (argc < 2) {
+        fprintf(stderr,
+                "Usage: %s key\n",
+                argv[0]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    if (weewiki_exists(&ww, argv[1])) {
+        fprintf(stderr, "pulling %s to %s\n", argv[1], fname);
+        weewiki_pull(&ww, argv[1], fname);
+    } else {
+        fp = fopen(fname, "w");
+        fprintf(fp, "A new page.");
+        fclose(fp);
+    }
+
+    sprintf(cmd, "$EDITOR %s", fname);
+    system(cmd);
+    weewiki_push(&ww, fname, argv[1]);
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    remove(fname);
+    return 1;
 }
 #+END_SRC
 * TODO New/Delete
-* TODO Edit
 * TODO Export
 * TODO Janet
 * TODO Sync

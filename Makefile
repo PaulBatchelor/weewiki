@@ -1,4 +1,4 @@
-WORGLE=worgle
+WORGLE=worgle -g
 
 OBJ=weewiki.o
 
@@ -17,3 +17,4 @@ weewiki: $(OBJ)
 clean:
 	$(RM) weewiki
 	$(RM) $(OBJ)
+	$(RM) weewiki.c
