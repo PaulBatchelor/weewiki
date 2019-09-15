@@ -6,7 +6,7 @@ CFLAGS += -g -Wall -pedantic -std=c89 -O3
 
 LIBS=-lsqlite3
 
-define: weewiki
+default: weewiki
 
 weewiki.c: weewiki.org
 	$(WORGLE) $<
