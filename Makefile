@@ -18,3 +18,7 @@ clean:
 	$(RM) weewiki
 	$(RM) $(OBJ)
 	$(RM) weewiki.c
+
+install: weewiki
+	mkdir -p /usr/local/bin
+	cp weewiki /usr/local/bin
