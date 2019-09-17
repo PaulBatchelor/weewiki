@@ -176,6 +176,15 @@ void weewiki_create_tables(weewiki_d *ww)
                 NULL,
                 NULL,
                 NULL);
+    sqlite3_exec(ww->db,
+                "CREATE TABLE IF NOT EXISTS wikilinks(\n"
+                "key TEXT UNIQUE,\n"
+                "filename TEXT,\n"
+                "mtime INTEGER\n"
+                ");\n",
+                NULL,
+                NULL,
+                NULL);
 }
 #+END_SRC
 ** Push
@@ -504,7 +513,203 @@ static int p_ls(int argc, char *argv[])
     return 0;
 }
 #+END_SRC
+* Link
+The "link" operation will link a page to a filepath.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "link", 4)) {
+    argc--;
+    argv++;
+    return p_link(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_link(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_link(int argc, char *argv[])
+{
+    weewiki_d ww;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    struct stat st;
+
+    if (argc < 3) {
+        fprintf(stderr,
+                "Usage: %s key file\n",
+                argv[0]);
+        return 1;
+    }
+
+    if (access(argv[2], F_OK) != -1) {
+        fprintf(stderr, "%s: file exists.\n", argv[2]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    rc = weewiki_pull(&ww, argv[1], argv[2]);
+
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "INSERT OR REPLACE INTO wikilinks"
+                       "(key, filename, mtime)\n"
+                       "VALUES(?1,?2,?3);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+    sqlite3_bind_text(stmt, 2, argv[2], -1, NULL);
+    stat(argv[2], &st);
+    sqlite3_bind_int(stmt, 3, st.st_mtime);
+
+    sqlite3_step(stmt);
+
+    sqlite3_finalize(stmt);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return rc;
+}
+#+END_SRC
+* TODO Sync
+The =sync= command is used to sync files between the
+database and external files. It will iterate through the
+=wikilinks= tables and update things by comparing internal
+modification times.
+
+If the external mtime is greater, the file is pushed to the
+table.
+
+If the internal mtime is greater, the file is pulled from
+table.
+
+If the times are equal, no action happens.
+
+If the external file doesn't exist, it is treated as a
+"pull" operation.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "sync", 4)) {
+    argc--;
+    argv++;
+    return p_sync(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_sync(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void update_mtime(weewiki_d *ww,
+                         const char *fname,
+                         const char *key)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    struct stat st;
+    unsigned int mtime;
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "UPDATE wikilinks SET mtime=?1 "
+                       "WHERE (key==?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    stat(fname, &st);
+    mtime = st.st_mtime;
+
+    sqlite3_bind_int(stmt, 1, mtime);
+    sqlite3_bind_text(stmt, 2, key, -1, NULL);
+
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+static int sync_file(weewiki_d *ww, sqlite3_stmt *stmt)
+{
+    int rc;
+    const char *fname;
+    const char *key;
+    unsigned int int_mtime;
+    unsigned int ext_mtime;
+    struct stat st;
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) return 0;
+    key = (const char *)sqlite3_column_text(stmt, 0);
+    fname = (const char *)sqlite3_column_text(stmt, 1);
+    int_mtime = sqlite3_column_int(stmt, 2);
+
+    if (access(fname, F_OK) == -1) {
+        ext_mtime = 0;
+    } else {
+        stat(fname, &st);
+        ext_mtime = st.st_mtime;
+    }
+
+    if (int_mtime == ext_mtime) {
+        printf("SKIP %s\n", key);
+    } else if (ext_mtime > int_mtime) {
+        printf("PUSH %s %s\n", fname, key);
+        weewiki_push(ww, fname, key);
+        update_mtime(ww, fname, key);
+    } else if (int_mtime > ext_mtime) {
+        printf("PULL %s %s\n", key, fname);
+        weewiki_pull(ww, key, fname);
+    }
+
+    return 1;
+}
+
+static int p_sync(int argc, char *argv[])
+{
+    weewiki_d ww;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    if (access(argv[2], F_OK) != -1) {
+        fprintf(stderr, "%s: file exists.\n", argv[2]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "SELECT key, filename, mtime "
+                       "FROM wikilinks;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    while (1) {
+        if (!sync_file(&ww, stmt)) {
+            rc = 1;
+            break;
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return rc;
+}
+#+END_SRC
 * TODO New/Delete
 * TODO Export
 * TODO Janet
-* TODO Sync
