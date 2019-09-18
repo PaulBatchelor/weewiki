@@ -37,7 +37,28 @@ int orgparse_test(int argc, char *argv[]);
 #+BEGIN_SRC c
 int orgparse_test(int argc, char *argv[])
 {
-    printf("This is not yet implemented.\n");
+    orgparse op;
+    FILE *fp;
+    char *buf;
+    size_t sz;
+    if (argc == 1) {
+        fprintf(stderr, "Usage: %s file.org\n", argv[0]);
+        return 1;
+    }
+
+    fp = fopen(argv[1], "r");
+    if (fp == NULL) {
+        fprintf(stderr,
+                "Could not open %s for reading.\n",
+                argv[1]);
+        return 1;
+    }
+    fseek(fp, 0, SEEK_END);
+    sz = ftell(fp) + 1;
+    buf = calloc(1, sz);
+    orgparse_init(&op);
+    orgparse_run(&op, buf, sz, NULL);
+    free(buf);
     return 0;
 }
 #+END_SRC
@@ -312,6 +333,6 @@ void orgparse_run(orgparse *op,
                   size_t sz,
                   void *ud)
 {
-
+    /* TODO: implement */
 }
 #+END_SRC
