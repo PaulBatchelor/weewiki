@@ -1,0 +1,14 @@
+#+TITLE: Orgparse Test
+This is a test program for orgparse.
+#+NAME: orgparse_test.c
+#+BEGIN_SRC c :tangle orgparse_test.c
+#include <stdio.h>
+#define ORGPARSE_IMPLEMENTATION
+#define ORGPARSE_TEST
+#include "orgparse.h"
+
+int main(int argc, char *argv[])
+{
+    return orgparse_test(argc, argv);
+}
+#+END_SRC

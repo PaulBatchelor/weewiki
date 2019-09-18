@@ -12,11 +12,29 @@ Defining =ORPARSE_TEST= will include the test program.
 #+BEGIN_SRC c :tangle orgparse.h
 #ifndef ORGPARSE_H
 #define ORGPARSE_H
+<<funcdefs>>
 #ifdef ORGPARSE_IMPLEMENTATION
 /* functions go here */
 #endif
 #ifdef ORGPARSE_TEST
-/* orgparse test code */
+<<test_program>>
 #endif
 #endif
+#+END_SRC
+* Test Program
+This test program can be run inside of =main=, and is
+designed to be run as a command line program.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+#ifdef ORGPARSE_TEST
+int orgparse_test(int argc, char *argv[]);
+#endif
+#+END_SRC
+#+NAME: test_program
+#+BEGIN_SRC c
+int orgparse_test(int argc, char *argv[])
+{
+    printf("This is not yet implemented.\n");
+    return 0;
+}
 #+END_SRC
