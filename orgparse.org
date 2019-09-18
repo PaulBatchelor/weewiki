@@ -154,6 +154,142 @@ void orgparse_set_code(orgparse *op, orgparse_text f)
     op->code = f;
 }
 #+END_SRC
+*** Bold
+Text that is defined inside the *bold* tags.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_bold)(void *,
+                              const char *,
+                              size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_bold bold;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->bold = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_bold(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_bold(orgparse *op, orgparse_text f)
+{
+    op->bold = f;
+}
+#+END_SRC
+*** Italic
+Text that is defined inside the **italic** tags.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_italic)(void *,
+                                const char *,
+                                size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_italic italic;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->italic = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_italic(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_italic(orgparse *op, orgparse_text f)
+{
+    op->italic = f;
+}
+#+END_SRC
+*** Underline
+Text that is contained inside the _underline_ tags.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_underline)(void *,
+                                   const char *,
+                                   size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_underline underline;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->underline = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_underline(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_underline(orgparse *op, orgparse_text f)
+{
+    op->underline = f;
+}
+#+END_SRC
+*** Code Block
+Text inside of a code block.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_codeblock)(void *,
+                              const char *,
+                              size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_codeblock codeblock;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->codeblock = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_codeblock(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_codeblock(orgparse *op, orgparse_text f)
+{
+    op->codeblock = f;
+}
+#+END_SRC
+*** Aux
+A special non-org tag, used for interpolated code in tags !@
+and @!.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_aux)(void *,
+                             const char *,
+                             size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_aux aux;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->aux = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_aux(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_aux(orgparse *op, orgparse_text f)
+{
+    op->aux = f;
+}
+#+END_SRC
 * Parsing
 Parsing is done using the function =orgparse_run=.
 All mutable variables are declared locally, so it should
