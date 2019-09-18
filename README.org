@@ -1,0 +1,6 @@
+#+TITLE: WeeWiki
+
+WeeWiki is a wee little wiki engine used to generate
+personal wikis and mind maps.
+
+This is very much a work in progress.
