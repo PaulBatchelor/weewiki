@@ -11,7 +11,10 @@ default: weewiki
 weewiki.c: weewiki.org
 	$(WORGLE) $<
 
-weewiki: $(OBJ)
+orgparse.h: orgparse.org
+	$(WORGLE) $<
+
+weewiki: $(OBJ) orgparse.h
 	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(LIBS)
 
 install: weewiki
@@ -24,3 +27,4 @@ clean:
 	$(RM) weewiki.c
 	$(RM) weewiki.h
 	$(RM) weewiki_private.h
+	$(RM) orgparse.h

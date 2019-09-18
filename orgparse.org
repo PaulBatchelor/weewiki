@@ -1,0 +1,22 @@
+#+TITLE: Orgparse
+Orgparse is a portable org-mode parser, written in ANSI C.
+* Top Files
+The entirety of orgparse is contained in a single header
+file.
+
+Defining =ORGPARSE_IMPLEMENTATION= will include the
+functions and should only happen once per file.
+
+Defining =ORPARSE_TEST= will include the test program.
+#+NAME: orgparse.h
+#+BEGIN_SRC c :tangle orgparse.h
+#ifndef ORGPARSE_H
+#define ORGPARSE_H
+#ifdef ORGPARSE_IMPLEMENTATION
+/* functions go here */
+#endif
+#ifdef ORGPARSE_TEST
+/* orgparse test code */
+#endif
+#endif
+#+END_SRC
