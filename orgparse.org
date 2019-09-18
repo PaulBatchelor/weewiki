@@ -12,9 +12,12 @@ Defining =ORPARSE_TEST= will include the test program.
 #+BEGIN_SRC c :tangle orgparse.h
 #ifndef ORGPARSE_H
 #define ORGPARSE_H
+<<typedefs>>
 <<funcdefs>>
 #ifdef ORGPARSE_IMPLEMENTATION
 /* functions go here */
+<<structs>>
+<<functions>>
 #endif
 #ifdef ORGPARSE_TEST
 <<test_program>>
@@ -36,5 +39,143 @@ int orgparse_test(int argc, char *argv[])
 {
     printf("This is not yet implemented.\n");
     return 0;
+}
+#+END_SRC
+* Main Interface
+Orgparse is a callback interface. These functions will
+handle the various parts of the org file.
+** Struct
+*** Declaration
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct orgparse orgparse;
+#+END_SRC
+#+NAME: structs
+#+BEGIN_SRC c
+struct orgparse {
+    <<interface>>
+};
+#+END_SRC
+*** Init
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_init(orgparse *op);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_init(orgparse *op)
+{
+    <<init>>
+}
+#+END_SRC
+** Callbacks
+All callbacks have the same first 3 arguments: a generic
+pointer, the string, and the length of the string.
+*** Header
+An org header. In addition to the header name, also supplies
+the header level.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_header)(void *,
+                                const char *,
+                                size_t,
+                                int);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_header header;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->header = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_header(orgparse *op, orgparse_header f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_header(orgparse *op, orgparse_header f)
+{
+    op->header = f;
+}
+#+END_SRC
+*** Text
+This function is anything that isn't formatted text.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_text)(void *,
+                              const char *,
+                              size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_text text;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->text = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_text(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_text(orgparse *op, orgparse_text f)
+{
+    op->text = f;
+}
+#+END_SRC
+*** Code
+Text that is defined inside the =codeblock= tags.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_code)(void *,
+                              const char *,
+                              size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_code code;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->code = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_code(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_code(orgparse *op, orgparse_text f)
+{
+    op->code = f;
+}
+#+END_SRC
+* Parsing
+Parsing is done using the function =orgparse_run=.
+All mutable variables are declared locally, so it should
+be feasible to run nested calls to this function.
+
+=orgparse_run= expects a properly intialized + set instance
+of =orgparse=, a text block, the text block size, and any
+user data.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_run(orgparse *op,
+                  const char *txt,
+                  size_t sz,
+                  void *ud);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_run(orgparse *op,
+                  const char *txt,
+                  size_t sz,
+                  void *ud)
+{
+
 }
 #+END_SRC

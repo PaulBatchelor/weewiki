@@ -3,6 +3,7 @@ This is a test program for orgparse.
 #+NAME: orgparse_test.c
 #+BEGIN_SRC c :tangle orgparse_test.c
 #include <stdio.h>
+#include <stdlib.h>
 #define ORGPARSE_IMPLEMENTATION
 #define ORGPARSE_TEST
 #include "orgparse.h"

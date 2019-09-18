@@ -1,4 +1,4 @@
-WORGLE=worgle -g
+WORGLE=worgle -g -Werror
 
 OBJ=weewiki.o
 
