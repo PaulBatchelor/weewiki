@@ -15,7 +15,7 @@ Defining =ORPARSE_TEST= will include the test program.
 <<typedefs>>
 <<funcdefs>>
 #ifdef ORGPARSE_IMPLEMENTATION
-/* functions go here */
+<<static_funcdefs>>
 <<structs>>
 <<functions>>
 #endif
@@ -35,6 +35,11 @@ int orgparse_test(int argc, char *argv[]);
 #+END_SRC
 #+NAME: test_program
 #+BEGIN_SRC c
+<<test_callbacks>>
+static void setup_orgparse(orgparse *op)
+{
+    <<setup_test_callbacks>>
+}
 int orgparse_test(int argc, char *argv[])
 {
     orgparse op;
@@ -56,11 +61,33 @@ int orgparse_test(int argc, char *argv[])
     fseek(fp, 0, SEEK_END);
     sz = ftell(fp) + 1;
     buf = calloc(1, sz);
+    fseek(fp, 0, SEEK_SET);
+    fread(buf, 1, sz, fp);
     orgparse_init(&op);
+    setup_orgparse(&op);
     orgparse_run(&op, buf, sz, NULL);
     free(buf);
     return 0;
 }
+#+END_SRC
+** Test Callbacks
+*** Header
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_header(void *ud,
+                        const char *h,
+                        size_t sz,
+                        int lvl)
+{
+    printf("header: '");
+    fwrite(h, 1, sz, stdout);
+    printf("', lvl: %d\n", lvl);
+}
+#+END_SRC
+
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_header(op, test_header);
 #+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
@@ -333,6 +360,73 @@ void orgparse_run(orgparse *op,
                   size_t sz,
                   void *ud)
 {
-    /* TODO: implement */
+    size_t pos;
+
+    for (pos = 0; pos < sz; pos++) {
+        if (parse_header(op, txt, sz, ud, &pos)) continue;
+    }
+}
+#+END_SRC
+** Parse Header
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_header(orgparse *op,
+                        const char *txt,
+                        size_t sz,
+                        void *ud,
+                        size_t *pos);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_header(orgparse *op,
+                        const char *str,
+                        size_t sz,
+                        void *ud,
+                        size_t *pos)
+{
+    const char *header;
+    size_t n;
+    size_t start;
+    int mode;
+    int lvl;
+    size_t hsz;
+
+    if(sz - *pos < 2) return 0;
+    if (str[*pos] != '*') return 0;
+
+    start = *pos;
+    mode = 0;
+    lvl = 0;
+    for (n = start; n < sz; n++) {
+        if (mode == 2) break;
+        switch (mode) {
+            case 0:
+                if (str[n] == '*') {
+                    lvl++;
+                    continue;
+                } else if (str[n] == ' ') {
+                    n++;
+                    header = &str[n];
+                    hsz = 1;
+                    mode = 1;
+                } else {
+                    mode = 2;
+                }
+                break;
+            case 1:
+                if (str[n] == '\n') {
+                    mode = 2;
+                    *pos += n - start;
+                    if (op->header != NULL) {
+                        op->header(ud, header, hsz, lvl);
+                    }
+                    break;
+                }
+                hsz++;
+                break;
+        }
+    }
+
+    return 1;
 }
 #+END_SRC
