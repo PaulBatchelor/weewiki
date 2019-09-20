@@ -367,6 +367,24 @@ void orgparse_run(orgparse *op,
     }
 }
 #+END_SRC
+** TODO Text Parsing
+Anything that is not a header or code block is generally
+considered to be a text block. Text can span multiple lines,
+and can contain special formatting tags, for things like
+*bold* text, **italic** text, and _underlined_ text as well.
+In addition, text can also contain links.
+
+When a line is determined to not be anything else (header,
+codeblock, aux block, etc), it is sent in to be parsed as
+text.
+
+The text block parser will read lines until it hits stuff
+that is non-text. Along the way, the text will check for
+formatting tags and links on a line by line basis.
+*** TODO Tag Check
+This functionality will generically check a line for
+matching tags. If a tag is found, the end position is
+returned.
 ** Parse Header
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
