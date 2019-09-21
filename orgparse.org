@@ -521,24 +521,15 @@ static int parse_text(orgparse *op,
                          (n - mark));
             }
             break;
-        } else if (tag_check(&str[n],
-                             sz - mark,
-                             '*',
-                             &len)) {
-            if (op->bold != NULL) {
-                if (op->text != NULL && n != mark) {
-                    op->text(ud, &str[mark], n - mark);
-                }
-                op->bold(ud, &str[n + 1], len);
-                n += len + 2;
-                mark = n;
-            }
+        } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
+            continue;
         }
     }
     return rc;
 }
 #+END_SRC
-*** TODO Tag Check
+*** DONE Tag Check
+CLOSED: [2019-09-21 Sat 18:39]
 This functionality will generically check a line for
 matching tags. If a tag is found, the end position is
 returned.
@@ -569,6 +560,55 @@ static int tag_check(const char *txt,
             break;
         }
     }
+    return rc;
+}
+#+END_SRC
+*** Parse Bold
+This will check and parse bold text.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_bold(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_bold(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark)
+{
+    size_t n, m;
+    int rc;
+    size_t len;
+
+    n = *pos;
+    m = *mark;
+    rc = 0;
+    len = 0;
+
+    if (tag_check(&str[n],
+                  sz - m,
+                  '*',
+                  &len)) {
+        if (op->bold != NULL) {
+            if (op->text != NULL && n != m) {
+                op->text(ud, &str[m], n - m);
+            }
+            op->bold(ud, &str[n + 1], len);
+            n += len + 2;
+            m = n;
+            *pos = n;
+            *mark = m;
+            rc = 1;
+        }
+    }
+
     return rc;
 }
 #+END_SRC
