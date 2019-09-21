@@ -27,6 +27,7 @@ Defining =ORPARSE_TEST= will include the test program.
 * Test Program
 This test program can be run inside of =main=, and is
 designed to be run as a command line program.
+** Top Level Program
 #+NAME: funcdefs
 #+BEGIN_SRC c
 #ifdef ORGPARSE_TEST
@@ -92,17 +93,33 @@ orgparse_set_header(op, test_header);
 #+NAME: test_callbacks
 #+BEGIN_SRC c
 static void test_text(void *ud,
-                      const char *h,
+                      const char *str,
                       size_t sz)
 {
     printf("text: '");
-    fwrite(h, 1, sz, stdout);
+    fwrite(str, 1, sz, stdout);
     printf("'\n");
 }
 #+END_SRC
 #+NAME: setup_test_callbacks
 #+BEGIN_SRC c
 orgparse_set_text(op, test_text);
+#+END_SRC
+*** Bold
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_bold(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    printf("Bold: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_bold(op, test_bold);
 #+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
@@ -235,11 +252,11 @@ op->bold = NULL;
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void orgparse_set_bold(orgparse *op, orgparse_text f);
+void orgparse_set_bold(orgparse *op, orgparse_bold f);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void orgparse_set_bold(orgparse *op, orgparse_text f)
+void orgparse_set_bold(orgparse *op, orgparse_bold f)
 {
     op->bold = f;
 }
@@ -406,6 +423,7 @@ static int parse_header(orgparse *op,
     int mode;
     int lvl;
     size_t hsz;
+    int rc;
 
     if(sz - *pos < 2) return 0;
     if (str[*pos] != '*') return 0;
@@ -413,6 +431,7 @@ static int parse_header(orgparse *op,
     start = *pos;
     mode = 0;
     lvl = 0;
+    rc = 0;
     for (n = start; n < sz; n++) {
         if (mode == 2) break;
         switch (mode) {
@@ -427,6 +446,7 @@ static int parse_header(orgparse *op,
                     mode = 1;
                 } else {
                     mode = 2;
+                    rc = 0;
                 }
                 break;
             case 1:
@@ -436,6 +456,7 @@ static int parse_header(orgparse *op,
                     if (op->header != NULL) {
                         op->header(ud, header, hsz, lvl);
                     }
+                    rc = 1;
                     break;
                 }
                 hsz++;
@@ -443,13 +464,27 @@ static int parse_header(orgparse *op,
         }
     }
 
-    return 1;
+    return rc;
 }
 #+END_SRC
 ** Parse Text
 Text is defined by what it isn't. If it isn't a header or
 code block, it is probably text. For this reason, the text
 block is a "last resort".
+
+Anything that is not a header or code block is generally
+considered to be a text block. Text can span multiple lines,
+and can contain special formatting tags, for things like
+*bold* text, **italic** text, and _underlined_ text as well.
+In addition, text can also contain links.
+
+When a line is determined to not be anything else (header,
+codeblock, aux block, etc), it is sent in to be parsed as
+text.
+
+The text block parser will read lines until it hits stuff
+that is non-text. Along the way, the text will check for
+formatting tags and links on a line by line basis.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int parse_text(orgparse *op,
@@ -468,40 +503,72 @@ static int parse_text(orgparse *op,
 {
     size_t n;
     size_t start;
+    size_t mark;
+    size_t len;
     int rc;
 
     rc = 0;
     start = *pos;
+    mark = start;
+    len = 0;
     for (n = start; n < sz; n++) {
         if (str[n] == '\n') {
             rc = 1;
             *pos += (n - start);
             if (op->text != NULL) {
                 op->text(ud,
-                         &str[start],
-                         (n - start));
+                         &str[mark],
+                         (n - mark));
             }
+            break;
+        } else if (tag_check(&str[n],
+                             sz - mark,
+                             '*',
+                             &len)) {
+            if (op->bold != NULL) {
+                if (op->text != NULL && n != mark) {
+                    op->text(ud, &str[mark], n - mark);
+                }
+                op->bold(ud, &str[n + 1], len);
+                n += len + 2;
+                mark = n;
+            }
+        }
+    }
+    return rc;
+}
+#+END_SRC
+*** TODO Tag Check
+This functionality will generically check a line for
+matching tags. If a tag is found, the end position is
+returned.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int tag_check(const char *txt,
+                     size_t sz,
+                     char tag,
+                     size_t *len);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int tag_check(const char *txt,
+                     size_t sz,
+                     char tag,
+                     size_t *len)
+{
+    size_t n;
+    int rc;
+    if (sz <= 2) return 0;
+    if (txt[0] != tag) return 0;
+
+    rc = 0;
+    for (n = 1; n < sz; n++) {
+        if (txt[n] == tag) {
+            rc = 1;
+            *len = n - 1;
             break;
         }
     }
     return rc;
 }
 #+END_SRC
-*** TODO Text Parsing
-Anything that is not a header or code block is generally
-considered to be a text block. Text can span multiple lines,
-and can contain special formatting tags, for things like
-*bold* text, **italic** text, and _underlined_ text as well.
-In addition, text can also contain links.
-
-When a line is determined to not be anything else (header,
-codeblock, aux block, etc), it is sent in to be parsed as
-text.
-
-The text block parser will read lines until it hits stuff
-that is non-text. Along the way, the text will check for
-formatting tags and links on a line by line basis.
-**** TODO Tag Check
-This functionality will generically check a line for
-matching tags. If a tag is found, the end position is
-returned.
