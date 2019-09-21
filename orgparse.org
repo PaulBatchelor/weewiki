@@ -112,7 +112,7 @@ static void test_bold(void *ud,
                       const char *str,
                       size_t sz)
 {
-    printf("Bold: '");
+    printf("bold: '");
     fwrite(str, 1, sz, stdout);
     printf("'\n");
 }
@@ -120,6 +120,22 @@ static void test_bold(void *ud,
 #+NAME: setup_test_callbacks
 #+BEGIN_SRC c
 orgparse_set_bold(op, test_bold);
+#+END_SRC
+*** Code
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_code(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    printf("code: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_code(op, test_code);
 #+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
@@ -504,13 +520,11 @@ static int parse_text(orgparse *op,
     size_t n;
     size_t start;
     size_t mark;
-    size_t len;
     int rc;
 
     rc = 0;
     start = *pos;
     mark = start;
-    len = 0;
     for (n = start; n < sz; n++) {
         if (str[n] == '\n') {
             rc = 1;
@@ -522,6 +536,8 @@ static int parse_text(orgparse *op,
             }
             break;
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
+            continue;
+        } else if (parse_code(op, str, ud, sz, &n, &mark)) {
             continue;
         }
     }
@@ -564,7 +580,7 @@ static int tag_check(const char *txt,
 }
 #+END_SRC
 *** Parse Bold
-This will check and parse bold text.
+This will check and parse *bold* text.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int parse_bold(orgparse *op,
@@ -601,6 +617,55 @@ static int parse_bold(orgparse *op,
                 op->text(ud, &str[m], n - m);
             }
             op->bold(ud, &str[n + 1], len);
+            n += len + 2;
+            m = n;
+            *pos = n;
+            *mark = m;
+            rc = 1;
+        }
+    }
+
+    return rc;
+}
+#+END_SRC
+*** Parse Code.
+This will check and parse =code= text.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_code(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_code(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark)
+{
+    size_t n, m;
+    int rc;
+    size_t len;
+
+    n = *pos;
+    m = *mark;
+    rc = 0;
+    len = 0;
+
+    if (tag_check(&str[n],
+                  sz - m,
+                  '=',
+                  &len)) {
+        if (op->code != NULL) {
+            if (op->text != NULL && n != m) {
+                op->text(ud, &str[m], n - m);
+            }
+            op->code(ud, &str[n + 1], len);
             n += len + 2;
             m = n;
             *pos = n;
