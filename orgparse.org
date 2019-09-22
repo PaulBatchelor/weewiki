@@ -167,6 +167,22 @@ static void test_newline(void *ud,
 #+BEGIN_SRC c
 orgparse_set_newline(op, test_newline);
 #+END_SRC
+*** Codeblock
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_codeblock(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    printf("codeblock: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_codeblock(op, test_codeblock);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -428,13 +444,29 @@ void orgparse_run(orgparse *op,
                   void *ud)
 {
     size_t pos;
+    int mode;
+    const char *blk;
+    size_t len;
 
+    mode = 0;
+    len = 0;
     for (pos = 0; pos < sz; pos++) {
-
-        if (parse_codeblock(op, txt, sz, ud, &pos)) continue;
-        if (parse_comment(txt, sz, &pos)) continue;
-        else if (parse_header(op, txt, sz, ud, &pos)) continue;
-        else parse_text(op, txt, sz, ud, &pos);
+        if (mode == 0) {
+            if (parse_comment(txt, sz, &pos)) {
+                continue;
+            }
+            if (parse_codeblock(op, txt, sz, ud,
+                                &pos, &mode, &blk, &len)) {
+                continue;
+            } else if (parse_header(op, txt, sz, ud, &pos)) {
+                continue;
+            } else {
+                parse_text(op, txt, sz, ud, &pos);
+            }
+        } else if (mode == 1) {
+            parse_codeblock(op, txt, sz, ud,
+                            &pos, &mode, &blk, &len);
+        }
     }
 }
 #+END_SRC
@@ -890,17 +922,18 @@ static int parse_cmd(const char *str,
 }
 #+END_SRC
 ** Parse Codeblock
-WIP.
-
-For now, just try and check for "#+BEGIN_SRC".
-
+A codeblock is a set of lines smooshed between
+'#+BEGIN_SRC' and '#+END_SRC' tags.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int parse_codeblock(orgparse *op,
                            const char *txt,
                            size_t sz,
                            void *ud,
-                           size_t *pos);
+                           size_t *pos,
+                           int *mode,
+                           const char **blk,
+                           size_t *blklen);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
@@ -908,7 +941,10 @@ static int parse_codeblock(orgparse *op,
                            const char *txt,
                            size_t sz,
                            void *ud,
-                           size_t *pos)
+                           size_t *pos,
+                           int *mode,
+                           const char **blk,
+                           size_t *blklen)
 {
     int rc;
     size_t start;
@@ -917,6 +953,7 @@ static int parse_codeblock(orgparse *op,
     const char *cmd;
     const char *cmdstr;
     size_t totallen;
+    size_t n;
 
     start = *pos;
     cmdlen = 0;
@@ -932,15 +969,33 @@ static int parse_codeblock(orgparse *op,
     *pos += totallen;
 
     if (rc) {
-        fwrite(&txt[start], 1, totallen, stdout);
-        printf("\n");
-        printf("found command (%d): '", cmdlen);
-        fwrite(cmd, 1, cmdlen, stdout);
-        printf("'\n");
-        printf("command str (%d): '", cmdstrlen);
-        fwrite(cmdstr, 1, cmdstrlen, stdout);
-        printf("'\n");
-        printf("totallen: %d\n", totallen);
+        if (*mode == 0) {
+            if (!strncmp(cmd, "BEGIN_SRC", cmdlen)) {
+                *blk = &txt[*pos + 1];
+                *blklen = 0;
+                *mode = 1;
+            }
+        } else if (*mode == 1) {
+
+            if (!strncmp(cmd, "END_SRC", cmdlen)) {
+                *mode = 0;
+                if (op->codeblock != NULL) {
+                    op->codeblock(ud, *blk, *blklen - 1);
+                }
+                *blk = NULL;
+                *blklen = 0;
+            }
+        }
+    }
+
+    /* Read a line */
+    if (*mode == 1) {
+        rc = 1;
+        for (n = start; n < sz; n++) {
+            if (txt[n] == '\n') break;
+        }
+        *pos += (n - start);
+        *blklen += (n - start) + 1;
     }
 
     return rc;

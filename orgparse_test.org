@@ -4,6 +4,7 @@ This is a test program for orgparse.
 #+BEGIN_SRC c :tangle orgparse_test.c
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #define ORGPARSE_IMPLEMENTATION
 #define ORGPARSE_TEST
 #include "orgparse.h"
