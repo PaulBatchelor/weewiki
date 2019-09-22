@@ -405,6 +405,7 @@ void orgparse_set_newline(orgparse *op, orgparse_text f)
 }
 #+END_SRC
 * Parsing
+** Top Level Parse (orgparse_run)
 Parsing is done using the function =orgparse_run=.
 All mutable variables are declared locally, so it should
 be feasible to run nested calls to this function.
@@ -429,7 +430,8 @@ void orgparse_run(orgparse *op,
     size_t pos;
 
     for (pos = 0; pos < sz; pos++) {
-        if (parse_header(op, txt, sz, ud, &pos)) continue;
+        if (parse_comment(txt, sz, &pos)) continue;
+        else if (parse_header(op, txt, sz, ud, &pos)) continue;
         else parse_text(op, txt, sz, ud, &pos);
     }
 }
@@ -754,5 +756,37 @@ static int parse_ul(orgparse *op,
                            mark,
                            '_',
                            op->underline);
+}
+#+END_SRC
+** Parse Comment
+Any thing that starts with '# ' (hash + space) is considered
+to be a comment, and the line will be ignored.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_comment(const char *txt,
+                         size_t sz,
+                         size_t *pos);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_comment(const char *txt,
+                         size_t sz,
+                         size_t *pos)
+{
+    size_t start;
+    size_t n;
+    if ((sz - *pos) < 2) return 0;
+    if (txt[*pos] != '#') return 0;
+    if (txt[*pos + 1] != ' ') return 0;
+
+    start = *pos;
+
+    for (n = start; n < sz; n++) {
+        if (txt[n] == '\n') break;
+    }
+
+    *pos += (n - start);
+
+    return 1;
 }
 #+END_SRC
