@@ -199,6 +199,22 @@ static void test_name(void *ud,
 #+BEGIN_SRC c
 orgparse_set_name(op, test_name);
 #+END_SRC
+*** Aux Block
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_aux(void *ud,
+                     const char *str,
+                     size_t sz)
+{
+    printf("aux(%d): '", sz);
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_aux(op, test_aux);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -506,6 +522,9 @@ void orgparse_run(orgparse *op,
         } else if (mode == 1) {
             parse_codeblock(op, txt, sz, ud,
                             &pos, &mode, &blk, &len);
+        } else if (mode == 2) {
+            parse_aux_end(op, txt, sz, ud,
+                          &pos, &mode, &blk, &len);
         }
     }
 }
@@ -646,9 +665,10 @@ static int parse_text(orgparse *op,
                 }
             }
             break;
-        } else if (parse_aux_begin(str, sz, &n,
-                                   mode, buf, len)) {
+        } else if (parse_aux_begin(op, str, ud, sz, &n,
+                                   &mark, mode, buf, len)) {
             rc = 0;
+            *pos = n;
             break;
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
@@ -845,26 +865,50 @@ static int parse_ul(orgparse *op,
 *** Parse Aux block (beginning)
 An aux block can be started at anytime inside of a text
 block.
+# Blech. this has gotten messy. too many arguments
+# refactor someday.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_aux_begin(const char *str,
+static int parse_aux_begin(orgparse *op,
+                           const char *str,
+                           void *ud,
                            size_t sz,
                            size_t *pos,
+                           size_t *mark,
                            int *mode,
                            const char **buf,
                            size_t *len);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_aux_begin(const char *str,
+static int parse_aux_begin(orgparse *op,
+                           const char *str,
+                           void *ud,
                            size_t sz,
                            size_t *pos,
+                           size_t *mark,
                            int *mode,
                            const char **buf,
                            size_t *len)
 {
-    /* TODO: implement me! */
-    return 0;
+    size_t n, m;
+
+    n = *pos;
+    m = *mark;
+
+    if ((sz - n) < 4) return 0;
+    if (str[n] != '@') return 0;
+    if (str[n + 1] != '!') return 0;
+
+    if (op->text != NULL && n != m) {
+        op->text(ud, &str[m], n - m);
+    }
+
+    *mode = 2;
+    *len = 0;
+    *buf = &str[n + 2];
+
+    return 1;
 }
 #+END_SRC
 ** Parse Comment
@@ -1129,5 +1173,47 @@ static int parse_name(orgparse *op,
     }
 
     return rc;
+}
+#+END_SRC
+** Parse Aux Block (ending)
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_aux_end(orgparse *op,
+                         const char *str,
+                         size_t sz,
+                         void *ud,
+                         size_t *pos,
+                         int *mode,
+                         const char **buf,
+                         size_t *len);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_aux_end(orgparse *op,
+                         const char *str,
+                         size_t sz,
+                         void *ud,
+                         size_t *pos,
+                         int *mode,
+                         const char **buf,
+                         size_t *len)
+{
+    size_t n;
+    size_t l;
+
+    n = *pos;
+    l = *len;
+    if ((sz - n) < 2) return 0;
+
+    if (str[n] == '!' && str[n + 1] == '@') {
+        if (op->aux != NULL) {
+            op->aux(ud, *buf, l - 1);
+        }
+        *mode = 0;
+        *pos = (*pos + 1);
+    } else {
+        *len = (*len + 1);
+    }
+    return 1;
 }
 #+END_SRC
