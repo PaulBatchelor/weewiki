@@ -183,6 +183,22 @@ static void test_codeblock(void *ud,
 #+BEGIN_SRC c
 orgparse_set_codeblock(op, test_codeblock);
 #+END_SRC
+*** Name
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_name(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    printf("name: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_name(op, test_name);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -420,6 +436,27 @@ void orgparse_set_newline(orgparse *op, orgparse_text f)
     op->newline = f;
 }
 #+END_SRC
+*** Name
+Handles a 'NAME' command.
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_text name;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->name = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_name(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_name(orgparse *op, orgparse_text f)
+{
+    op->name = f;
+}
+#+END_SRC
 * Parsing
 ** Top Level Parse (orgparse_run)
 Parsing is done using the function =orgparse_run=.
@@ -459,6 +496,8 @@ void orgparse_run(orgparse *op,
                                 &pos, &mode, &blk, &len)) {
                 continue;
             } else if (parse_header(op, txt, sz, ud, &pos)) {
+                continue;
+            } else if (parse_name(op, txt, sz, ud, &pos)) {
                 continue;
             } else {
                 parse_text(op, txt, sz, ud, &pos);
@@ -954,6 +993,7 @@ static int parse_codeblock(orgparse *op,
     const char *cmdstr;
     size_t totallen;
     size_t n;
+    int new_block;
 
     start = *pos;
     cmdlen = 0;
@@ -966,18 +1006,22 @@ static int parse_codeblock(orgparse *op,
                    &cmdstr,
                    &cmdstrlen,
                    &totallen);
-    *pos += totallen;
+    new_block = 0;
 
     if (rc) {
-        if (*mode == 0) {
+        if (*mode  == 0) {
             if (!strncmp(cmd, "BEGIN_SRC", cmdlen)) {
+                *pos += totallen;
                 *blk = &txt[*pos + 1];
                 *blklen = 0;
                 *mode = 1;
+                new_block = 1;
+            } else {
+                rc = 0;
             }
         } else if (*mode == 1) {
-
             if (!strncmp(cmd, "END_SRC", cmdlen)) {
+                *pos += totallen;
                 *mode = 0;
                 if (op->codeblock != NULL) {
                     op->codeblock(ud, *blk, *blklen - 1);
@@ -989,13 +1033,62 @@ static int parse_codeblock(orgparse *op,
     }
 
     /* Read a line */
-    if (*mode == 1) {
+    if (*mode == 1 && !new_block) {
         rc = 1;
         for (n = start; n < sz; n++) {
             if (txt[n] == '\n') break;
         }
         *pos += (n - start);
         *blklen += (n - start) + 1;
+    }
+
+    return rc;
+}
+#+END_SRC
+** Parse Name
+Parses a "#+NAME" command.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_name(orgparse *op,
+                      const char *txt,
+                      size_t sz,
+                      void *ud,
+                      size_t *pos);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_name(orgparse *op,
+                      const char *txt,
+                      size_t sz,
+                      void *ud,
+                      size_t *pos)
+{
+    int rc;
+    size_t start;
+    size_t cmdlen;
+    size_t cmdstrlen;
+    const char *cmd;
+    const char *cmdstr;
+    size_t totallen;
+
+    start = *pos;
+    cmdlen = 0;
+    cmdstrlen = 0;
+    totallen = 0;
+    rc = parse_cmd(&txt[start],
+                   sz,
+                   &cmd,
+                   &cmdlen,
+                   &cmdstr,
+                   &cmdstrlen,
+                   &totallen);
+    if (rc) {
+        if (!strncmp(cmd, "NAME:", cmdlen)) {
+            if (op->name != NULL) {
+                op->name(ud, cmdstr, cmdstrlen);
+            }
+            *pos += totallen;
+        }
     }
 
     return rc;
