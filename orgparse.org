@@ -206,7 +206,7 @@ static void test_aux(void *ud,
                      const char *str,
                      size_t sz)
 {
-    printf("aux(%d): '", sz);
+    printf("aux: '");
     fwrite(str, 1, sz, stdout);
     printf("'\n");
 }
@@ -523,8 +523,11 @@ void orgparse_run(orgparse *op,
             parse_codeblock(op, txt, sz, ud,
                             &pos, &mode, &blk, &len);
         } else if (mode == 2) {
-            parse_aux_end(op, txt, sz, ud,
-                          &pos, &mode, &blk, &len);
+            if (parse_aux_doiend(txt, sz, pos)) {
+                <<end_the_aux_block>>
+            } else {
+                <<increment_aux_line>>
+            }
         }
     }
 }
@@ -665,11 +668,8 @@ static int parse_text(orgparse *op,
                 }
             }
             break;
-        } else if (parse_aux_begin(op, str, ud, sz, &n,
-                                   &mark, mode, buf, len)) {
-            rc = 0;
-            *pos = n;
-            break;
+        } else if (parse_aux_check(str, sz, &n)) {
+            <<break_and_begin_aux_block>>
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
         } else if (parse_code(op, str, ud, sz, &n, &mark)) {
@@ -860,55 +860,6 @@ static int parse_ul(orgparse *op,
                            mark,
                            '_',
                            op->underline);
-}
-#+END_SRC
-*** Parse Aux block (beginning)
-An aux block can be started at anytime inside of a text
-block.
-# Blech. this has gotten messy. too many arguments
-# refactor someday.
-#+NAME: static_funcdefs
-#+BEGIN_SRC c
-static int parse_aux_begin(orgparse *op,
-                           const char *str,
-                           void *ud,
-                           size_t sz,
-                           size_t *pos,
-                           size_t *mark,
-                           int *mode,
-                           const char **buf,
-                           size_t *len);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-static int parse_aux_begin(orgparse *op,
-                           const char *str,
-                           void *ud,
-                           size_t sz,
-                           size_t *pos,
-                           size_t *mark,
-                           int *mode,
-                           const char **buf,
-                           size_t *len)
-{
-    size_t n, m;
-
-    n = *pos;
-    m = *mark;
-
-    if ((sz - n) < 4) return 0;
-    if (str[n] != '@') return 0;
-    if (str[n + 1] != '!') return 0;
-
-    if (op->text != NULL && n != m) {
-        op->text(ud, &str[m], n - m);
-    }
-
-    *mode = 2;
-    *len = 0;
-    *buf = &str[n + 2];
-
-    return 1;
 }
 #+END_SRC
 ** Parse Comment
@@ -1175,45 +1126,105 @@ static int parse_name(orgparse *op,
     return rc;
 }
 #+END_SRC
-** Parse Aux Block (ending)
+** Parsing an Aux Block
+An aux block is anything inside of a '@!' and '!@'.
+For WeeWiki, the idea here is to execute janet code for
+dynamic page content. Aux blocks can be both in-line and
+multiline. They start out inside of a text block, but have
+their own mode for multi-line processing (similar to code
+blocks).
+*** Beginning a Block
+**** Checking for an Aux Block
+An aux block can be started at anytime inside of a text
+block. The parsing process here must check for any '@!'
+roaming around. This is wrapped inside of a function called
+=parse_aux_check=. It is called inside of =parse_text=.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_aux_end(orgparse *op,
-                         const char *str,
-                         size_t sz,
-                         void *ud,
-                         size_t *pos,
-                         int *mode,
-                         const char **buf,
-                         size_t *len);
+static int parse_aux_check(const char *str,
+                           size_t sz,
+                           size_t *pos);
+#+END_SRC
+At one point, this once also processed the aux block code,
+but the function ended up taking too many arguments! Now
+it only checks.
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_aux_check(const char *str,
+                           size_t sz,
+                           size_t *pos)
+{
+    size_t n;
+
+    n = *pos;
+
+    if ((sz - n) < 4) return 0;
+    if (str[n] != '@') return 0;
+    if (str[n + 1] != '!') return 0;
+
+    return 1;
+}
+#+END_SRC
+**** Breaking Out of The Loop
+If indeed an aux block has been found, the parsing routine
+will immediately break out of the loop and set itself
+up to be in aux block mode (mode 2). Any text up to this
+point is processed as well.
+
+Return values aren't really being used right now, but
+the return value is being set to be 0 (false) to indicate
+that the the text has been short-circuited by an aux block.
+
+The code below is done inside of the =parse_text= function.
+#+NAME: break_and_begin_aux_block
+#+BEGIN_SRC c
+if (op->text != NULL && n != mark) {
+    op->text(ud, &str[mark], n - mark);
+}
+
+*mode = 2;
+*len = 0;
+*buf = &str[n + 2];
+
+rc = 0;
+*pos = n;
+break;
+#+END_SRC
+*** Ending it
+Once the parse state machine is set to be in aux block mode,
+it can only be ended by finding a matching '!@' tag.
+**** Do I end?
+The only way a aux block ends is with the magic tag '!@'.
+This is checked with the function =parse_aux_doiend=.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_aux_doiend(const char *str,
+                            size_t sz,
+                            size_t n);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_aux_end(orgparse *op,
-                         const char *str,
-                         size_t sz,
-                         void *ud,
-                         size_t *pos,
-                         int *mode,
-                         const char **buf,
-                         size_t *len)
+static int parse_aux_doiend(const char *str,
+                            size_t sz,
+                            size_t n)
 {
-    size_t n;
-    size_t l;
-
-    n = *pos;
-    l = *len;
     if ((sz - n) < 2) return 0;
-
-    if (str[n] == '!' && str[n + 1] == '@') {
-        if (op->aux != NULL) {
-            op->aux(ud, *buf, l - 1);
-        }
-        *mode = 0;
-        *pos = (*pos + 1);
-    } else {
-        *len = (*len + 1);
-    }
-    return 1;
+    return (str[n] == '!' && str[n + 1] == '@');
 }
+#+END_SRC
+**** Ending The Aux Block
+#+NAME: end_the_aux_block
+#+BEGIN_SRC c
+if (op->aux != NULL) {
+    op->aux(ud, blk, len - 1);
+}
+mode = 0;
+pos++;
+#+END_SRC
+**** Adding to aux line
+While in aux block mode, the character block length is
+increased one character at a time.
+#+NAME: increment_aux_line
+#+BEGIN_SRC c
+len++;
 #+END_SRC
