@@ -500,7 +500,8 @@ void orgparse_run(orgparse *op,
             } else if (parse_name(op, txt, sz, ud, &pos)) {
                 continue;
             } else {
-                parse_text(op, txt, sz, ud, &pos);
+                parse_text(op, txt, sz, ud, &pos,
+                           &mode, &blk, &len);
             }
         } else if (mode == 1) {
             parse_codeblock(op, txt, sz, ud,
@@ -597,10 +598,13 @@ formatting tags and links on a line by line basis.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int parse_text(orgparse *op,
-                      const char *txt,
+                      const char *str,
                       size_t sz,
                       void *ud,
-                      size_t *pos);
+                      size_t *pos,
+                      int *mode,
+                      const char **buf,
+                      size_t *len);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
@@ -608,7 +612,10 @@ static int parse_text(orgparse *op,
                       const char *str,
                       size_t sz,
                       void *ud,
-                      size_t *pos)
+                      size_t *pos,
+                      int *mode,
+                      const char **buf,
+                      size_t *len)
 {
     size_t n;
     size_t start;
@@ -638,6 +645,10 @@ static int parse_text(orgparse *op,
                             (n - mark));
                 }
             }
+            break;
+        } else if (parse_aux_begin(str, sz, &n,
+                                   mode, buf, len)) {
+            rc = 0;
             break;
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
@@ -831,6 +842,31 @@ static int parse_ul(orgparse *op,
                            op->underline);
 }
 #+END_SRC
+*** Parse Aux block (beginning)
+An aux block can be started at anytime inside of a text
+block.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_aux_begin(const char *str,
+                           size_t sz,
+                           size_t *pos,
+                           int *mode,
+                           const char **buf,
+                           size_t *len);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_aux_begin(const char *str,
+                           size_t sz,
+                           size_t *pos,
+                           int *mode,
+                           const char **buf,
+                           size_t *len)
+{
+    /* TODO: implement me! */
+    return 0;
+}
+#+END_SRC
 ** Parse Comment
 Any thing that starts with '# ' (hash + space) is considered
 to be a comment, and the line will be ignored.
@@ -1017,6 +1053,7 @@ static int parse_codeblock(orgparse *op,
                 *mode = 1;
                 new_block = 1;
             } else {
+                /* another command, not a codeblock */
                 rc = 0;
             }
         } else if (*mode == 1) {
