@@ -137,6 +137,22 @@ static void test_code(void *ud,
 #+BEGIN_SRC c
 orgparse_set_code(op, test_code);
 #+END_SRC
+*** Underline
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_uline(void *ud,
+                       const char *str,
+                       size_t sz)
+{
+    printf("underline: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_underline(op, test_uline);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -225,15 +241,9 @@ void orgparse_set_text(orgparse *op, orgparse_text f)
 #+END_SRC
 *** Code
 Text that is defined inside the =codeblock= tags.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_code)(void *,
-                              const char *,
-                              size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_code code;
+orgparse_text code;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -252,15 +262,9 @@ void orgparse_set_code(orgparse *op, orgparse_text f)
 #+END_SRC
 *** Bold
 Text that is defined inside the *bold* tags.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_bold)(void *,
-                              const char *,
-                              size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_bold bold;
+orgparse_text bold;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -268,26 +272,20 @@ op->bold = NULL;
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void orgparse_set_bold(orgparse *op, orgparse_bold f);
+void orgparse_set_bold(orgparse *op, orgparse_text f);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void orgparse_set_bold(orgparse *op, orgparse_bold f)
+void orgparse_set_bold(orgparse *op, orgparse_text f)
 {
     op->bold = f;
 }
 #+END_SRC
 *** Italic
 Text that is defined inside the **italic** tags.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_italic)(void *,
-                                const char *,
-                                size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_italic italic;
+orgparse_text italic;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -306,15 +304,9 @@ void orgparse_set_italic(orgparse *op, orgparse_text f)
 #+END_SRC
 *** Underline
 Text that is contained inside the _underline_ tags.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_underline)(void *,
-                                   const char *,
-                                   size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_underline underline;
+orgparse_text underline;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -333,15 +325,9 @@ void orgparse_set_underline(orgparse *op, orgparse_text f)
 #+END_SRC
 *** Code Block
 Text inside of a code block.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_codeblock)(void *,
-                              const char *,
-                              size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_codeblock codeblock;
+orgparse_text codeblock;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -361,15 +347,9 @@ void orgparse_set_codeblock(orgparse *op, orgparse_text f)
 *** Aux
 A special non-org tag, used for interpolated code in tags !@
 and @!.
-#+NAME: typedefs
-#+BEGIN_SRC c
-typedef void (*orgparse_aux)(void *,
-                             const char *,
-                             size_t);
-#+END_SRC
 #+NAME: interface
 #+BEGIN_SRC c
-orgparse_aux aux;
+orgparse_text aux;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
@@ -526,10 +506,10 @@ static int parse_text(orgparse *op,
     start = *pos;
     mark = start;
     for (n = start; n < sz; n++) {
-        if (str[n] == '\n') {
+        if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             *pos += (n - start);
-            if (op->text != NULL) {
+            if (op->text != NULL && n != mark) {
                 op->text(ud,
                          &str[mark],
                          (n - mark));
@@ -538,6 +518,8 @@ static int parse_text(orgparse *op,
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
         } else if (parse_code(op, str, ud, sz, &n, &mark)) {
+            continue;
+        } else if (parse_ul(op, str, ud, sz, &n, &mark)) {
             continue;
         }
     }
@@ -579,6 +561,62 @@ static int tag_check(const char *txt,
     return rc;
 }
 #+END_SRC
+*** Check and Parse
+Checks AND parses particular tag.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int check_and_parse(orgparse *op,
+                           const char *str,
+                           void *ud,
+                           size_t sz,
+                           size_t *pos,
+                           size_t *mark,
+                           char tag,
+                           orgparse_text f);
+#+END_SRC
+Setting the =mark= and =pos= variables for mark and position
+took some trial and error to get right.
+#+NAME: functions
+#+BEGIN_SRC c
+static int check_and_parse(orgparse *op,
+                           const char *str,
+                           void *ud,
+                           size_t sz,
+                           size_t *pos,
+                           size_t *mark,
+                           char tag,
+                           orgparse_text f)
+{
+    size_t n, m;
+    int rc;
+    size_t len;
+
+    n = *pos;
+    m = *mark;
+    rc = 0;
+    len = 0;
+
+    if (tag_check(&str[n],
+                  sz - m,
+                  tag,
+                  &len)) {
+        if (op->text != NULL && n != m) {
+            op->text(ud, &str[m], n - m);
+        }
+        if (f != NULL) {
+            f(ud, &str[n + 1], len);
+            n += len + 2;
+            m = n;
+            if (n < sz && str[n] == '\n') n--;
+            *pos = n;
+            *mark = m;
+            rc = 1;
+        }
+    }
+
+    return rc;
+}
+#+END_SRC
 *** Parse Bold
 This will check and parse *bold* text.
 #+NAME: static_funcdefs
@@ -599,33 +637,14 @@ static int parse_bold(orgparse *op,
                       size_t *pos,
                       size_t *mark)
 {
-    size_t n, m;
-    int rc;
-    size_t len;
-
-    n = *pos;
-    m = *mark;
-    rc = 0;
-    len = 0;
-
-    if (tag_check(&str[n],
-                  sz - m,
-                  '*',
-                  &len)) {
-        if (op->bold != NULL) {
-            if (op->text != NULL && n != m) {
-                op->text(ud, &str[m], n - m);
-            }
-            op->bold(ud, &str[n + 1], len);
-            n += len + 2;
-            m = n;
-            *pos = n;
-            *mark = m;
-            rc = 1;
-        }
-    }
-
-    return rc;
+    return check_and_parse(op,
+                           str,
+                           ud,
+                           sz,
+                           pos,
+                           mark,
+                           '*',
+                           op->bold);
 }
 #+END_SRC
 *** Parse Code.
@@ -648,32 +667,43 @@ static int parse_code(orgparse *op,
                       size_t *pos,
                       size_t *mark)
 {
-    size_t n, m;
-    int rc;
-    size_t len;
-
-    n = *pos;
-    m = *mark;
-    rc = 0;
-    len = 0;
-
-    if (tag_check(&str[n],
-                  sz - m,
-                  '=',
-                  &len)) {
-        if (op->code != NULL) {
-            if (op->text != NULL && n != m) {
-                op->text(ud, &str[m], n - m);
-            }
-            op->code(ud, &str[n + 1], len);
-            n += len + 2;
-            m = n;
-            *pos = n;
-            *mark = m;
-            rc = 1;
-        }
-    }
-
-    return rc;
+    return check_and_parse(op,
+                           str,
+                           ud,
+                           sz,
+                           pos,
+                           mark,
+                           '=',
+                           op->code);
+}
+#+END_SRC
+*** Parse Underline.
+This will check and parse =underline= text.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_ul(orgparse *op,
+                    const char *str,
+                    void *ud,
+                    size_t sz,
+                    size_t *pos,
+                    size_t *mark);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_ul(orgparse *op,
+                    const char *str,
+                    void *ud,
+                    size_t sz,
+                    size_t *pos,
+                    size_t *mark)
+{
+    return check_and_parse(op,
+                           str,
+                           ud,
+                           sz,
+                           pos,
+                           mark,
+                           '_',
+                           op->underline);
 }
 #+END_SRC
