@@ -153,6 +153,20 @@ static void test_uline(void *ud,
 #+BEGIN_SRC c
 orgparse_set_underline(op, test_uline);
 #+END_SRC
+*** Newline
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_newline(void *ud,
+                         const char *str,
+                         size_t sz)
+{
+    printf("newline\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_newline(op, test_newline);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -366,6 +380,30 @@ void orgparse_set_aux(orgparse *op, orgparse_text f)
     op->aux = f;
 }
 #+END_SRC
+*** Newline
+The newline callback gets called anytime there is an empty
+line, which means an explicit line break is needed.
+For convenience, the =orgparse_text= callback is used,
+though the arguments will be unused and set to =NULL=.
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_text newline;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->newline = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_newline(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_newline(orgparse *op, orgparse_text f)
+{
+    op->newline = f;
+}
+#+END_SRC
 * Parsing
 Parsing is done using the function =orgparse_run=.
 All mutable variables are declared locally, so it should
@@ -505,14 +543,25 @@ static int parse_text(orgparse *op,
     rc = 0;
     start = *pos;
     mark = start;
+
+    /* check for end of file */
+    if (start == (sz - 1)) return 0;
+
     for (n = start; n < sz; n++) {
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             *pos += (n - start);
-            if (op->text != NULL && n != mark) {
-                op->text(ud,
-                         &str[mark],
-                         (n - mark));
+            if (n == mark) {
+                if (op->newline != NULL) {
+                    op->newline(ud, NULL, 0);
+                }
+            } else {
+                if (op->text != NULL) {
+                    /* add a newline */
+                    op->text(ud,
+                            &str[mark],
+                            (n - mark));
+                }
             }
             break;
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
