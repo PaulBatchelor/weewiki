@@ -1,24 +1,33 @@
 WORGLE=worgle -g -Werror
 
-OBJ=weewiki.o
+OBJ=weewiki.o janet/janet.o
 
-CFLAGS += -g -Wall -pedantic -std=c89 -O3
+CFLAGS += -g -Wall -O3
 
 LIBS=-lsqlite3
+
+C89=$(CC) --std=c89 -pedantic
+C99=$(CC) --std=c99
 
 default: weewiki orgparse_test
 
 %.c: %.org
 	$(WORGLE) $<
 
+janet/janet.o: janet/janet.c
+	$(C99) -c $(CFLAGS) $< -o $@
+
+%.o: %.c
+	$(C89) -c $(CFLAGS) $< -o $@
+
 orgparse.h: orgparse.org
 	$(WORGLE) $<
 
 orgparse_test: orgparse_test.c orgparse.h
-	$(CC) $(CFLAGS) $< -o $@
+	$(C89) $(CFLAGS) $< -o $@
 
 weewiki: $(OBJ) orgparse.h
-	$(CC) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(LIBS)
+	$(C89) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(LIBS)
 
 install: weewiki
 	mkdir -p /usr/local/bin
