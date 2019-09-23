@@ -739,6 +739,9 @@ static int p_export(int argc, char *argv[])
     weewiki_export_d ex;
     sqlite3 *db;
     sqlite3_stmt *stmt;
+    FILE *config;
+    char *tmp;
+    size_t config_sz;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s page\n", argv[0]);
@@ -751,31 +754,58 @@ static int p_export(int argc, char *argv[])
     weewiki_open(&ww, "a.db");
 
     if (!weewiki_exists(&ww, argv[1])) {
-        fprintf(stderr, "Could not find page '%s'\n", argv[1]);
+        fprintf(stderr,
+                "Could not find page '%s'\n",
+                argv[1]);
         rc = 1;
     }
 
-    db = ww.db;
+    if (!rc) {
+        db = ww.db;
+        sqlite3_prepare_v2(db,
+                           "SELECT value "
+                           "FROM wiki WHERE (key==?1);",
+                           -1,
+                           &stmt,
+                           NULL);
 
-    sqlite3_prepare_v2(db,
-                       "SELECT value "
-                       "FROM wiki WHERE (key==?1);",
-                       -1,
-                       &stmt,
-                       NULL);
+        sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+        sqlite3_step(stmt);
 
-    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
-    sqlite3_step(stmt);
+        ex.fp = stdout;
+        janet_init();
+        ex.env = janet_core_env(NULL);
+        janet_dostring(ex.env,
+                       "(defn html-header () ())"
+                       "(defn html-footer () ())",
+                       NULL, NULL);
 
-    ex.fp = stdout;
-    janet_init();
-    ex.env = janet_core_env(NULL);
-    weewiki_orgparse_setup(&ex.op);
-    weewiki_export_run(&ex,
-                       (const char *)sqlite3_column_text(stmt, 0),
-                       sqlite3_column_bytes(stmt, 0));
-    sqlite3_finalize(stmt);
-    janet_deinit();
+        config = fopen("weewiki.janet", "r");
+
+        if (config != NULL) {
+            fseek(config, 0, SEEK_END);
+            config_sz = ftell(config);
+            tmp = calloc(1, config_sz + 1);
+            fseek(config, 0, SEEK_SET);
+            fread(tmp, 1, config_sz, config);
+            fclose(config);
+            janet_dostring(ex.env, tmp, NULL, NULL);
+            free(tmp);
+        }
+
+        janet_dostring(ex.env, "(html-header)", NULL, NULL);
+
+        weewiki_orgparse_setup(&ex.op);
+        weewiki_export_run(&ex,
+                           (const char *)sqlite3_column_text(stmt, 0),
+                           sqlite3_column_bytes(stmt, 0));
+        sqlite3_finalize(stmt);
+
+        janet_dostring(ex.env, "(html-footer)", NULL, NULL);
+
+        janet_deinit();
+    }
+
     weewiki_close(&ww);
     weewiki_clean(&ww);
     return rc;
