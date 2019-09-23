@@ -18,6 +18,8 @@ capabilities.
 #define ORGPARSE_IMPLEMENTATION
 #include "orgparse.h"
 
+#include "janet/janet.h"
+
 #include "weewiki.h"
 #include "weewiki_private.h"
 <<static_funcdefs>>
@@ -580,7 +582,8 @@ static int p_link(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* TODO Sync
+* DONE Sync
+CLOSED: [2019-09-23 Mon 12:09]
 The =sync= command is used to sync files between the
 database and external files. It will iterate through the
 =wikilinks= tables and update things by comparing internal
@@ -765,11 +768,14 @@ static int p_export(int argc, char *argv[])
     sqlite3_step(stmt);
 
     ex.fp = stdout;
+    janet_init();
+    ex.env = janet_core_env(NULL);
     weewiki_orgparse_setup(&ex.op);
     weewiki_export_run(&ex,
                        (const char *)sqlite3_column_text(stmt, 0),
                        sqlite3_column_bytes(stmt, 0));
     sqlite3_finalize(stmt);
+    janet_deinit();
     weewiki_close(&ww);
     weewiki_clean(&ww);
     return rc;
@@ -787,6 +793,7 @@ struct weewiki_export_d {
     weewiki_d *ww;
     FILE *fp;
     orgparse op;
+    JanetTable *env;
 };
 #+END_SRC
 ** Orgparse callback setup
@@ -864,6 +871,11 @@ static void html_aux(void *ud,
                      const char *str,
                      size_t sz)
 {
+    weewiki_export_d *ex;
+    ex = ud;
+    janet_dobytes(ex->env,
+                  (const uint8_t *)str, sz,
+                  NULL, NULL);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -942,4 +954,3 @@ void weewiki_export_run(weewiki_export_d *ex,
     orgparse_run(&ex->op, buf, sz, ex);
 }
 #+END_SRC
-* TODO Janet
