@@ -233,6 +233,26 @@ static void test_title(void *ud,
 #+BEGIN_SRC c
 orgparse_set_title(op, test_title);
 #+END_SRC
+*** Link
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_link(void *ud,
+                      const char *link,
+                      size_t link_sz,
+                      const char *name,
+                      size_t name_sz)
+{
+    printf("link_ref: '");
+    fwrite(link, 1, link_sz, stdout);
+    printf("'', '");
+    fwrite(name, 1, name_sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_link(op, test_link);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -512,6 +532,34 @@ void orgparse_set_title(orgparse *op, orgparse_text f)
     op->title = f;
 }
 #+END_SRC
+*** Link
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_link)(void *,
+                              const char *,
+                              size_t,
+                              const char *,
+                              size_t);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_link link;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->link = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_link(orgparse *op, orgparse_link f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_link(orgparse *op, orgparse_link f)
+{
+    op->link = f;
+}
+#+END_SRC
 * Parsing
 ** Top Level Parse (orgparse_run)
 Parsing is done using the function =orgparse_run=.
@@ -641,6 +689,7 @@ static int parse_header(orgparse *op,
 }
 #+END_SRC
 ** Parse Text
+*** Parse Text Callback
 Text is defined by what it isn't. If it isn't a header or
 code block, it is probably text. For this reason, the text
 block is a "last resort".
@@ -716,6 +765,8 @@ static int parse_text(orgparse *op,
         } else if (parse_code(op, str, ud, sz, &n, &mark)) {
             continue;
         } else if (parse_ul(op, str, ud, sz, &n, &mark)) {
+            continue;
+        } else if (parse_link(op, str, ud, sz, &n, &mark)) {
             continue;
         }
     }
@@ -801,13 +852,13 @@ static int check_and_parse(orgparse *op,
         }
         if (f != NULL) {
             f(ud, &str[n + 1], len);
-            n += len + 2;
-            m = n;
-            if (n < sz && str[n] == '\n') n--;
-            *pos = n;
-            *mark = m;
-            rc = 1;
         }
+        n += len + 2;
+        m = n;
+        if (n < sz && str[n] == '\n') n--;
+        *pos = n;
+        *mark = m;
+        rc = 1;
     }
 
     return rc;
@@ -901,6 +952,169 @@ static int parse_ul(orgparse *op,
                            mark,
                            '_',
                            op->underline);
+}
+#+END_SRC
+*** Parse Link
+**** Top Level Function
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_link(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_link(orgparse *op,
+                      const char *str,
+                      void *ud,
+                      size_t sz,
+                      size_t *pos,
+                      size_t *mark)
+{
+    int rc;
+    const char *link;
+    size_t link_sz;
+    const char *name;
+    size_t name_sz;
+    size_t len;
+    size_t n, m;
+
+    rc = check_link(str, *pos, sz);
+
+    if (!rc) return 0;
+
+    link_sz = 0;
+    name_sz = 0;
+    len = 0;
+
+    n = *pos;
+    m = *mark;
+
+    extract_link(str, n, sz,
+                 &link, &link_sz,
+                 &name, &name_sz,
+                 &len);
+
+    if (op->text != NULL && n != m) {
+        op->text(ud, &str[m], n - m);
+    }
+
+    if (op->link != NULL) {
+        op->link(ud, link, link_sz, name, name_sz);
+    }
+
+    n += len + 2;
+    m = n;
+    if (n < sz && str[n] == '\n') n--;
+
+    *pos = n;
+    *mark = m;
+
+    return 1;
+}
+#+END_SRC
+**** Check For Link
+#+NAME: funcdefs
+#+BEGIN_SRC c
+static int check_link(const char *str,
+                      size_t pos,
+                      size_t sz);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int check_link(const char *str,
+                      size_t pos,
+                      size_t sz)
+{
+    size_t n;
+
+    if ((pos - sz) < 5) return 0;
+
+    if (str[pos] != '[' || str[pos+1] != '[') return 0;
+
+    sz -= 1; /* for lookahead */
+    pos += 2;
+
+    for (n = pos; n < sz; n++) {
+        if (str[n] == '\n') return 0;
+        if (str[n] == ']' && str[n + 1] == ']') return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
+**** Extract Link
+#+NAME: funcdefs
+#+BEGIN_SRC c
+static void extract_link(const char *str,
+                         size_t pos,
+                         size_t sz,
+                         const char **plink,
+                         size_t *link_sz,
+                         const char **pname,
+                         size_t *name_sz,
+                         size_t *len);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void extract_link(const char *str,
+                         size_t pos,
+                         size_t sz,
+                         const char **plink,
+                         size_t *link_sz,
+                         const char **pname,
+                         size_t *name_sz,
+                         size_t *len)
+{
+    size_t off;
+    size_t n;
+    const char *link;
+    size_t link_size;
+    const char *name;
+    size_t name_size;
+    size_t tmp;
+    size_t start;
+
+
+    sz -= 1; /* for lookahead */
+
+    start = pos;
+    pos += 2;
+
+    off = 2;
+    name_size = 0;
+    link_size = 0;
+    tmp = 0;
+    link = NULL;
+    name = NULL;
+    link = &str[pos];
+    for(n = pos; n < sz; n++) {
+        off++;
+        tmp++;
+        if(str[n] == ']' && str[n + 1] == '[') {
+            link_size = tmp - 1;
+            tmp = 0;
+            name = &str[n + 2];
+            n++;
+            off++;
+        } else if(str[n] == ']' && str[n + 1] == ']') {
+            name_size = tmp - 1;
+            if(name == NULL) { /* name not set, assume type 2 link */
+                link_size = name_size;
+                name = link;
+            }
+            off++;
+            break;
+        }
+    }
+    *name_sz = name_size;
+    *pname = name;
+    *link_sz = link_size;
+    *plink = link;
+    *len = n - start;
 }
 #+END_SRC
 ** Parse Comment
