@@ -217,6 +217,22 @@ static void test_aux(void *ud,
 #+BEGIN_SRC c
 orgparse_set_aux(op, test_aux);
 #+END_SRC
+*** Title
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_title(void *ud,
+                       const char *str,
+                       size_t sz)
+{
+    printf("title: '");
+    fwrite(str, 1, sz, stdout);
+    printf("'\n");
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_title(op, test_title);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -475,6 +491,27 @@ void orgparse_set_name(orgparse *op, orgparse_text f)
     op->name = f;
 }
 #+END_SRC
+*** Title
+Handles a titlecommand.
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_text title;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->title = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_title(orgparse *op, orgparse_text f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_title(orgparse *op, orgparse_text f)
+{
+    op->title = f;
+}
+#+END_SRC
 * Parsing
 ** Top Level Parse (orgparse_run)
 Parsing is done using the function =orgparse_run=.
@@ -516,6 +553,8 @@ void orgparse_run(orgparse *op,
             } else if (parse_header(op, txt, sz, ud, &pos)) {
                 continue;
             } else if (parse_name(op, txt, sz, ud, &pos)) {
+                continue;
+            } else if (parse_title(op, txt, sz, ud, &pos)) {
                 continue;
             } else {
                 parse_text(op, txt, sz, ud, &pos,
@@ -1122,7 +1161,7 @@ static int parse_name(orgparse *op,
                 op->name(ud, cmdstr, cmdstrlen);
             }
             *pos += totallen;
-        }
+        } else rc = 0;
     }
 
     return rc;
@@ -1229,4 +1268,53 @@ increased one character at a time.
 #+NAME: increment_aux_line
 #+BEGIN_SRC c
 len++;
+#+END_SRC
+** Parse Title
+Parses the =TITLE= commmand.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int parse_title(orgparse *op,
+                       const char *txt,
+                       size_t sz,
+                       void *ud,
+                       size_t *pos);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int parse_title(orgparse *op,
+                       const char *txt,
+                       size_t sz,
+                       void *ud,
+                       size_t *pos)
+{
+    int rc;
+    size_t start;
+    size_t cmdlen;
+    size_t cmdstrlen;
+    const char *cmd;
+    const char *cmdstr;
+    size_t totallen;
+
+    start = *pos;
+    cmdlen = 0;
+    cmdstrlen = 0;
+    totallen = 0;
+    rc = parse_cmd(&txt[start],
+                   sz,
+                   &cmd,
+                   &cmdlen,
+                   &cmdstr,
+                   &cmdstrlen,
+                   &totallen);
+    if (rc) {
+        if (!strncmp(cmd, "TITLE:", cmdlen)) {
+            if (op->title != NULL) {
+                op->title(ud, cmdstr, cmdstrlen);
+            }
+            *pos += totallen;
+        }
+    }
+
+    return rc;
+}
 #+END_SRC

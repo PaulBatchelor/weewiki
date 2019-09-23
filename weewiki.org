@@ -968,6 +968,29 @@ static void html_name(void *ud,
 #+BEGIN_SRC c
 orgparse_set_name(op, html_name);
 #+END_SRC
+*** Title
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_title(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fprintf(fp, "<title>");
+    fwrite(str, 1, sz, fp);
+    fprintf(fp, "</title>\n");
+    fprintf(fp, "<h1>");
+    fwrite(str, 1, sz, fp);
+    fprintf(fp, "</h1>\n");
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_title(op, html_title);
+#+END_SRC
 ** Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
