@@ -15,6 +15,9 @@ capabilities.
 #include <unistd.h>
 #include <time.h>
 
+#define ORGPARSE_IMPLEMENTATION
+#include "orgparse.h"
+
 #include "weewiki.h"
 #include "weewiki_private.h"
 <<static_funcdefs>>
@@ -329,7 +332,6 @@ int weewiki_exists(weewiki_d *ww, const char *key)
 
     rc = sqlite3_column_int(stmt, 0);
 
-    fprintf(stderr, "column is %d\n", rc);
     sqlite3_finalize(stmt);
     return rc;
 }
@@ -712,4 +714,232 @@ static int p_sync(int argc, char *argv[])
 #+END_SRC
 * TODO New/Delete
 * TODO Export
+** Command
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "export", 6)) {
+    argc--;
+    argv++;
+    return p_export(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[])
+{
+    weewiki_d ww;
+    int rc;
+    weewiki_export_d ex;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s page\n", argv[0]);
+        return 1;
+    }
+
+    rc = 0;
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    if (!weewiki_exists(&ww, argv[1])) {
+        fprintf(stderr, "Could not find page '%s'\n", argv[1]);
+        rc = 1;
+    }
+
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "SELECT value "
+                       "FROM wiki WHERE (key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+    sqlite3_step(stmt);
+
+    ex.fp = stdout;
+    weewiki_orgparse_setup(&ex.op);
+    weewiki_export_run(&ex,
+                       (const char *)sqlite3_column_text(stmt, 0),
+                       sqlite3_column_bytes(stmt, 0));
+    sqlite3_finalize(stmt);
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return rc;
+}
+#+END_SRC
+** Orgparse Export Struct
+This is a struct passed into orgparse.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct weewiki_export_d weewiki_export_d;
+#+END_SRC
+#+NAME: structs
+#+BEGIN_SRC c
+struct weewiki_export_d {
+    weewiki_d *ww;
+    FILE *fp;
+    orgparse op;
+};
+#+END_SRC
+** Orgparse callback setup
+Orgparse is used to parse a text buffer and generate HTML
+content. To do this, a series of callbacks are implemented.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_orgparse_setup(orgparse *op);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+<<orgparse_callbacks>>
+void weewiki_orgparse_setup(orgparse *op)
+{
+    orgparse_init(op);
+    <<orgparse_html_setup>>
+}
+#+END_SRC
+*** Header
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_header(void *ud,
+                        const char *h,
+                        size_t sz,
+                        int lvl)
+{
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    lvl++;
+    fprintf(fp, "<h%d>", lvl);
+    fwrite(h, 1, sz, fp);
+    fprintf(fp, "</h%d>\n", lvl);
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_header(op, html_header);
+#+END_SRC
+*** Text
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_text(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    fwrite(str, 1, sz, stdout);
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_text(op, html_text);
+#+END_SRC
+*** Bold
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_bold(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    printf("<b>");
+    fwrite(str, 1, sz, stdout);
+    printf("</b>");
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_bold(op, html_bold);
+#+END_SRC
+*** Aux
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_aux(void *ud,
+                     const char *str,
+                     size_t sz)
+{
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_aux(op, html_aux);
+#+END_SRC
+*** Newline
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_newline(void *ud,
+                         const char *str,
+                         size_t sz)
+{
+    printf("<br>\n");
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_newline(op, html_newline);
+#+END_SRC
+*** Code
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_code(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    printf("<code>");
+    fwrite(str, 1, sz, stdout);
+    printf("'</code>");
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_code(op, html_code);
+#+END_SRC
+*** Code Block
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_codeblock(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_codeblock(op, html_codeblock);
+#+END_SRC
+*** Name
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_name(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_name(op, html_name);
+#+END_SRC
+** Run
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_export_run(weewiki_export_d *ex,
+                        const char *buf,
+                        size_t sz);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_export_run(weewiki_export_d *ex,
+                        const char *buf,
+                        size_t sz)
+{
+    orgparse_run(&ex->op, buf, sz, ex);
+}
+#+END_SRC
 * TODO Janet

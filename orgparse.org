@@ -13,10 +13,12 @@ Defining =ORPARSE_TEST= will include the test program.
 #ifndef ORGPARSE_H
 #define ORGPARSE_H
 <<typedefs>>
+#ifdef ORGPARSE_IMPLEMENTATION
+<<structs>>
+#endif
 <<funcdefs>>
 #ifdef ORGPARSE_IMPLEMENTATION
 <<static_funcdefs>>
-<<structs>>
 <<functions>>
 #endif
 #ifdef ORGPARSE_TEST

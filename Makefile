@@ -20,6 +20,8 @@ janet/janet.o: janet/janet.c
 %.o: %.c
 	$(C89) -c $(CFLAGS) $< -o $@
 
+weewiki.c: orgparse.h
+
 orgparse.h: orgparse.org
 	$(WORGLE) $<
 
