@@ -991,6 +991,30 @@ static void html_title(void *ud,
 #+BEGIN_SRC c
 orgparse_set_title(op, html_title);
 #+END_SRC
+*** Link
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_link(void *ud,
+                      const char *link,
+                      size_t link_sz,
+                      const char *name,
+                      size_t name_sz)
+{
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fprintf(fp, "<a href=\"");
+    fwrite(link, 1, link_sz, fp);
+    fprintf(fp, "\">");
+    fwrite(name, 1, name_sz, fp);
+    fprintf(fp, "</a>");
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_link(op, html_link);
+#+END_SRC
 ** Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
