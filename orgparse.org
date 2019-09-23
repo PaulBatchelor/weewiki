@@ -751,10 +751,10 @@ static int parse_text(orgparse *op,
                 }
             } else {
                 if (op->text != NULL) {
-                    /* add a newline */
+                    /* +1 includes line break*/
                     op->text(ud,
                             &str[mark],
-                            (n - mark));
+                            (n - mark) + 1);
                 }
             }
             break;

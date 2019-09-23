@@ -855,9 +855,9 @@ static void html_header(void *ud,
     ex = ud;
     fp = ex->fp;
     lvl++;
-    fprintf(fp, "<h%d>", lvl);
+    fprintf(fp, "\n<h%d>", lvl);
     fwrite(h, 1, sz, fp);
-    fprintf(fp, "</h%d>\n", lvl);
+    fprintf(fp, "</h%d>\n\n", lvl);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -871,7 +871,11 @@ static void html_text(void *ud,
                       const char *str,
                       size_t sz)
 {
-    fwrite(str, 1, sz, stdout);
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fwrite(str, 1, sz, fp);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -885,9 +889,13 @@ static void html_bold(void *ud,
                       const char *str,
                       size_t sz)
 {
-    printf("<b>");
-    fwrite(str, 1, sz, stdout);
-    printf("</b>");
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fprintf(fp, "<b>");
+    fwrite(str, 1, sz, fp);
+    fprintf(fp, "</b>");
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -919,7 +927,11 @@ static void html_newline(void *ud,
                          const char *str,
                          size_t sz)
 {
-    printf("<br>\n");
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fprintf(fp, "<br>\n");
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -933,9 +945,13 @@ static void html_code(void *ud,
                       const char *str,
                       size_t sz)
 {
-    printf("<code>");
-    fwrite(str, 1, sz, stdout);
-    printf("'</code>");
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+    fprintf(fp, "<code>");
+    fwrite(str, 1, sz, fp);
+    fprintf(fp, "</code>");
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
