@@ -22,6 +22,7 @@ capabilities.
 
 #include "weewiki.h"
 #include "weewiki_private.h"
+<<global_data>>
 <<static_funcdefs>>
 <<functions>>
 static int match(const char *s1,
@@ -96,6 +97,14 @@ if (ww->db != NULL) {
     weewiki_close(ww);
 }
 #+END_SRC
+#+NAME: contents
+#+BEGIN_SRC c
+FILE *fp;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+ww->fp = NULL;
+#+END_SRC
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -118,6 +127,30 @@ void weewiki_clean(weewiki_d *ww);
 void weewiki_clean(weewiki_d *ww)
 {
     <<clean>>
+}
+#+END_SRC
+** Global Data Instance
+To make integration with Janet easier, a global =weewiki_d=
+pointer is used.
+#+NAME: global_data
+#+BEGIN_SRC c
+static weewiki_d *WeeWiki = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_set(weewiki_d *ww);
+weewiki_d *weewiki_get(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_set(weewiki_d *ww)
+{
+    WeeWiki = ww;
+}
+
+weewiki_d *weewiki_get(void)
+{
+    return WeeWiki;
 }
 #+END_SRC
 * DONE Database
@@ -762,6 +795,7 @@ static int p_export(int argc, char *argv[])
 
     if (!rc) {
         db = ww.db;
+        weewiki_set(&ww);
         sqlite3_prepare_v2(db,
                            "SELECT value "
                            "FROM wiki WHERE (key==?1);",
@@ -773,8 +807,14 @@ static int p_export(int argc, char *argv[])
         sqlite3_step(stmt);
 
         ex.fp = stdout;
+        ww.fp = ex.fp;
         janet_init();
         ex.env = janet_core_env(NULL);
+
+        janet_def(ex.env,
+                  "print",
+                  janet_wrap_cfunction(cfun_io_print),
+                  NULL);
         janet_dostring(ex.env,
                        "(defn html-header () ())"
                        "(defn html-footer () ())",
@@ -1045,5 +1085,32 @@ void weewiki_export_run(weewiki_export_d *ex,
                         size_t sz)
 {
     orgparse_run(&ex->op, buf, sz, ex);
+}
+#+END_SRC
+** Janet Print
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_io_print(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_io_print(int32_t argc, Janet *argv)
+{
+    int32_t j, len;
+    int32_t i;
+    weewiki_d *ww;
+    FILE *f;
+
+    ww = weewiki_get();
+    f = ww->fp;
+    for (i = 0; i < argc; ++i) {
+        const uint8_t *vstr = janet_to_string(argv[i]);
+        len = janet_string_length(vstr);
+        for (j = 0; j < len; ++j) {
+            putc(vstr[j], f);
+        }
+    }
+    putc('\n', f);
+    return janet_wrap_nil();
 }
 #+END_SRC
