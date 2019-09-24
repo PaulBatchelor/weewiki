@@ -744,7 +744,6 @@ static int parse_text(orgparse *op,
     for (n = start; n < sz; n++) {
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
-            *pos += (n - start);
             if (n == mark) {
                 if (op->newline != NULL) {
                     op->newline(ud, NULL, 0);
@@ -770,6 +769,7 @@ static int parse_text(orgparse *op,
             continue;
         }
     }
+    *pos += (n - start);
     return rc;
 }
 #+END_SRC
@@ -1442,7 +1442,6 @@ if (op->text != NULL && n != mark) {
 *buf = &str[n + 2];
 
 rc = 0;
-*pos = n;
 break;
 #+END_SRC
 *** Ending it

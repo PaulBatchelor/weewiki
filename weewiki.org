@@ -83,6 +83,7 @@ struct weewiki_d {
 };
 #+END_SRC
 ** Contents
+*** SQLite database
 #+NAME: contents
 #+BEGIN_SRC c
 sqlite3 *db;
@@ -97,6 +98,7 @@ if (ww->db != NULL) {
     weewiki_close(ww);
 }
 #+END_SRC
+*** Global filehandle
 #+NAME: contents
 #+BEGIN_SRC c
 FILE *fp;
@@ -104,6 +106,15 @@ FILE *fp;
 #+NAME: init
 #+BEGIN_SRC c
 ww->fp = NULL;
+#+END_SRC
+*** Global Exporter
+#+NAME: contents
+#+BEGIN_SRC c
+weewiki_export_d *ex;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+ww->ex = NULL;
 #+END_SRC
 ** Init
 #+NAME: funcdefs
@@ -800,6 +811,10 @@ static int p_export(int argc, char *argv[])
                   "print",
                   janet_wrap_cfunction(cfun_io_print),
                   NULL);
+        janet_def(ex.env,
+                  "org",
+                  janet_wrap_cfunction(cfun_org),
+                  NULL);
         janet_dostring(ex.env,
                        "(defn html-header () ())"
                        "(defn html-footer () ())"
@@ -1187,6 +1202,7 @@ static void write_single_file(weewiki_d *ww,
 
     ex->fp = mkfile(dir, NULL);
     ww->fp = ex->fp;
+    ww->ex = ex;
 
     write_file(ex,
                sqlite3_column_text(stmt, 0),
@@ -1229,6 +1245,7 @@ static void write_multiple_files(weewiki_d *ww,
         ex->fp = mkfile(dir,
                         sqlite3_column_text(stmt, 0));
         ww->fp = ex->fp;
+        ww->ex = ex;
         if (ex->fp != NULL) {
             fprintf(stdout, "Writing %s\n", key);
             write_file(ex,
@@ -1243,5 +1260,27 @@ static void write_multiple_files(weewiki_d *ww,
 
 
     sqlite3_finalize(stmt);
+}
+#+END_SRC
+** Parsing Org code in Janet
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_org(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_org(int32_t argc, Janet *argv)
+{
+    int32_t len;
+    weewiki_d *ww;
+    weewiki_export_d *ex;
+    const char *txt;
+
+    ww = weewiki_get();
+    ex = ww->ex;
+    txt = (const char *)janet_to_string(argv[0]);
+    len = strlen(txt);
+    weewiki_export_run(ex, txt, len);
+    return janet_wrap_nil();
 }
 #+END_SRC
