@@ -776,23 +776,18 @@ static int p_export(int argc, char *argv[])
     size_t config_sz;
     Janet out;
     const unsigned char *dir;
+    int export_page;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s page\n", argv[0]);
-        return 1;
+        export_page = 0;
+    } else {
+        export_page = 1;
     }
 
     rc = 0;
 
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
-
-    if (!weewiki_exists(&ww, argv[1])) {
-        fprintf(stderr,
-                "Could not find page '%s'\n",
-                argv[1]);
-        rc = 1;
-    }
 
     if (!rc) {
         db = ww.db;
@@ -830,9 +825,11 @@ static int p_export(int argc, char *argv[])
 
         weewiki_orgparse_setup(&ex.op);
 
-        write_single_file(&ww, &ex,
-                          db, dir,
-                          argv[1]);
+        if (export_page) {
+            write_single_file(&ww, &ex, db, dir, argv[1]);
+        } else {
+            write_multiple_files(&ww, &ex, db, dir);
+        }
 
         janet_deinit();
     }
@@ -1140,8 +1137,15 @@ static FILE * mkfile(const unsigned char *dir,
                      const unsigned char *name)
 {
     FILE *fp;
+    char tmp[256];
     if (name == NULL) return stdout;
-    fp = stdout; /* for now */
+    sprintf(tmp, "%s/%s.html", dir, name);
+    fp = fopen(tmp, "w");
+    if (fp == NULL) {
+        fprintf(stderr,
+                "Could not write to file %s\n",
+                tmp);
+    }
     return fp;
 }
 #+END_SRC
@@ -1163,6 +1167,14 @@ static void write_single_file(weewiki_d *ww,
                               const char *name)
 {
     sqlite3_stmt *stmt;
+
+    if (!weewiki_exists(ww, name)) {
+        fprintf(stderr,
+                "Could not find page '%s'\n",
+                name);
+        return;
+    }
+
     sqlite3_prepare_v2(db,
                         "SELECT value "
                         "FROM wiki WHERE (key==?1);",
@@ -1182,5 +1194,54 @@ static void write_single_file(weewiki_d *ww,
 
     sqlite3_finalize(stmt);
 
+}
+#+END_SRC
+** Write Multiple Files
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void write_multiple_files(weewiki_d *ww,
+                                 weewiki_export_d *ex,
+                                 sqlite3 *db,
+                                 const unsigned char *dir);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void write_multiple_files(weewiki_d *ww,
+                                 weewiki_export_d *ex,
+                                 sqlite3 *db,
+                                 const unsigned char *dir)
+{
+    sqlite3_stmt *stmt;
+    int rc;
+    const unsigned char *key;
+
+    sqlite3_prepare_v2(db,
+                        "SELECT key, value "
+                        "FROM wiki;",
+                        -1,
+                        &stmt,
+                        NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        key = sqlite3_column_text(stmt, 0);
+        ex->fp = mkfile(dir,
+                        sqlite3_column_text(stmt, 0));
+        ww->fp = ex->fp;
+        if (ex->fp != NULL) {
+            fprintf(stdout, "Writing %s\n", key);
+            write_file(ex,
+                    sqlite3_column_text(stmt, 1),
+                    sqlite3_column_bytes(stmt, 1));
+            fclose(ex->fp);
+        } else {
+            break;
+        }
+        rc = sqlite3_step(stmt);
+    }
+
+
+    sqlite3_finalize(stmt);
 }
 #+END_SRC
