@@ -771,10 +771,11 @@ static int p_export(int argc, char *argv[])
     int rc;
     weewiki_export_d ex;
     sqlite3 *db;
-    sqlite3_stmt *stmt;
     FILE *config;
     char *tmp;
     size_t config_sz;
+    Janet out;
+    const unsigned char *dir;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s page\n", argv[0]);
@@ -796,18 +797,7 @@ static int p_export(int argc, char *argv[])
     if (!rc) {
         db = ww.db;
         weewiki_set(&ww);
-        sqlite3_prepare_v2(db,
-                           "SELECT value "
-                           "FROM wiki WHERE (key==?1);",
-                           -1,
-                           &stmt,
-                           NULL);
 
-        sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
-        sqlite3_step(stmt);
-
-        ex.fp = stdout;
-        ww.fp = ex.fp;
         janet_init();
         ex.env = janet_core_env(NULL);
 
@@ -817,7 +807,8 @@ static int p_export(int argc, char *argv[])
                   NULL);
         janet_dostring(ex.env,
                        "(defn html-header () ())"
-                       "(defn html-footer () ())",
+                       "(defn html-footer () ())"
+                       "(def ww-dir \"\")",
                        NULL, NULL);
 
         config = fopen("weewiki.janet", "r");
@@ -833,15 +824,15 @@ static int p_export(int argc, char *argv[])
             free(tmp);
         }
 
-        janet_dostring(ex.env, "(html-header)", NULL, NULL);
+        janet_dostring(ex.env, "ww-dir", NULL, &out);
+
+        dir = janet_unwrap_string(out);
 
         weewiki_orgparse_setup(&ex.op);
-        weewiki_export_run(&ex,
-                           (const char *)sqlite3_column_text(stmt, 0),
-                           sqlite3_column_bytes(stmt, 0));
-        sqlite3_finalize(stmt);
 
-        janet_dostring(ex.env, "(html-footer)", NULL, NULL);
+        write_single_file(&ww, &ex,
+                          db, dir,
+                          argv[1]);
 
         janet_deinit();
     }
@@ -1112,5 +1103,84 @@ static Janet cfun_io_print(int32_t argc, Janet *argv)
     }
     putc('\n', f);
     return janet_wrap_nil();
+}
+#+END_SRC
+** Write File
+This generates a file
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void write_file(weewiki_export_d *ex,
+                       const unsigned char *txt,
+                       size_t txt_sz);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void write_file(weewiki_export_d *ex,
+                       const unsigned char *txt,
+                       size_t txt_sz)
+{
+    janet_dostring(ex->env, "(html-header)", NULL, NULL);
+    weewiki_export_run(ex,
+                        (const char *)txt,
+                        txt_sz);
+    janet_dostring(ex->env, "(html-footer)", NULL, NULL);
+}
+#+END_SRC
+** Make Filehandle
+Generates a filehandle. If null values are passed in,
+return =stdout=.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static FILE * mkfile(const unsigned char *dir,
+                     const unsigned char *name);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static FILE * mkfile(const unsigned char *dir,
+                     const unsigned char *name)
+{
+    FILE *fp;
+    if (name == NULL) return stdout;
+    fp = stdout; /* for now */
+    return fp;
+}
+#+END_SRC
+** Write Single File
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void write_single_file(weewiki_d *ww,
+                              weewiki_export_d *ex,
+                              sqlite3 *db,
+                              const unsigned char *dir,
+                              const char *name);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void write_single_file(weewiki_d *ww,
+                              weewiki_export_d *ex,
+                              sqlite3 *db,
+                              const unsigned char *dir,
+                              const char *name)
+{
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2(db,
+                        "SELECT value "
+                        "FROM wiki WHERE (key==?1);",
+                        -1,
+                        &stmt,
+                        NULL);
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_step(stmt);
+
+    ex->fp = mkfile(dir, NULL);
+    ww->fp = ex->fp;
+
+    write_file(ex,
+               sqlite3_column_text(stmt, 0),
+               sqlite3_column_bytes(stmt, 0));
+
+    sqlite3_finalize(stmt);
+
 }
 #+END_SRC
