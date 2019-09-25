@@ -1,6 +1,6 @@
 WORGLE=worgle -g -Werror
 
-OBJ=weewiki.o janet/janet.o
+OBJ=weewiki.o janet/janet.o jan.o
 
 CFLAGS += -g -Wall -O3
 
@@ -17,16 +17,23 @@ default: weewiki orgparse_test
 janet/janet.o: janet/janet.c
 	$(C99) -c $(CFLAGS) $< -o $@
 
+jan.o: jan.c
+	$(C99) -c $(CFLAGS) $< -o $@
+
+jan.h: jan.c
+
 %.o: %.c
 	$(C89) -c $(CFLAGS) $< -o $@
 
 weewiki.c: orgparse.h
+weewiki.c: jan.h
 
 orgparse.h: orgparse.org
 	$(WORGLE) $<
 
 orgparse_test: orgparse_test.c orgparse.h
 	$(C89) $(CFLAGS) $< -o $@
+
 
 weewiki: $(OBJ) orgparse.h
 	$(C89) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(LIBS)
@@ -38,8 +45,8 @@ install: weewiki
 clean:
 	$(RM) weewiki
 	$(RM) $(OBJ)
-	$(RM) weewiki.c
-	$(RM) weewiki.h
+	$(RM) weewiki.c weewiki.h
+	$(RM) jan.c jan.h
 	$(RM) weewiki_private.h
 	$(RM) orgparse.h
 	$(RM) orgparse_test.c

@@ -18,10 +18,9 @@ capabilities.
 #define ORGPARSE_IMPLEMENTATION
 #include "orgparse.h"
 
-#include "janet/janet.h"
-
 #include "weewiki.h"
 #include "weewiki_private.h"
+#include "jan.h"
 <<global_data>>
 <<static_funcdefs>>
 <<functions>>
@@ -59,6 +58,15 @@ int main(int argc, char *argv[])
 #+BEGIN_SRC c :tangle weewiki.h
 #ifndef WEEWIKI_H
 #define WEEWIKI_H
+#ifndef JANET_H_defined
+typedef struct JanetTable JanetTable;
+typedef struct Janet Janet;
+int janet_dostring(JanetTable *env,
+                   const char *str,
+                   const char *sourcePath,
+                   Janet *out);
+#endif
+
 <<typedefs>>
 <<funcdefs>>
 #endif
@@ -107,6 +115,17 @@ FILE *fp;
 #+BEGIN_SRC c
 ww->fp = stdout;
 #+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+FILE * weewiki_fp(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+FILE * weewiki_fp(weewiki_d *ww)
+{
+    return ww->fp;
+}
+#+END_SRC
 *** Global Exporter
 #+NAME: contents
 #+BEGIN_SRC c
@@ -115,6 +134,17 @@ weewiki_export_d *ex;
 #+NAME: init
 #+BEGIN_SRC c
 ww->ex = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+weewiki_export_d * weewiki_ex(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+weewiki_export_d * weewiki_ex(weewiki_d *ww)
+{
+    return ww->ex;
+}
 #+END_SRC
 ** Init
 #+NAME: funcdefs
@@ -898,10 +928,6 @@ static int p_export(int argc, char *argv[])
     int rc;
     weewiki_export_d ex;
     sqlite3 *db;
-    FILE *config;
-    char *tmp;
-    size_t config_sz;
-    Janet out;
     const unsigned char *dir;
     int export_page;
 
@@ -1031,18 +1057,18 @@ static void html_bold(void *ud,
 #+BEGIN_SRC c
 orgparse_set_bold(op, html_bold);
 #+END_SRC
-*** Aux
+*** Aux (TODO: bring back)
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_aux(void *ud,
                      const char *str,
                      size_t sz)
 {
-    weewiki_export_d *ex;
-    ex = ud;
-    janet_dobytes(ex->env,
-                  (const uint8_t *)str, sz,
-                  NULL, NULL);
+    /* weewiki_export_d *ex; */
+    /* ex = ud; */
+    /* janet_dobytes(ex->env, */
+    /*               (const uint8_t *)str, sz, */
+    /*               NULL, NULL); */
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -1174,33 +1200,6 @@ void weewiki_export_run(weewiki_export_d *ex,
                         size_t sz)
 {
     orgparse_run(&ex->op, buf, sz, ex);
-}
-#+END_SRC
-** Janet Print
-#+NAME: static_funcdefs
-#+BEGIN_SRC c
-static Janet cfun_io_print(int32_t argc, Janet *argv);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-static Janet cfun_io_print(int32_t argc, Janet *argv)
-{
-    int32_t j, len;
-    int32_t i;
-    weewiki_d *ww;
-    FILE *f;
-
-    ww = weewiki_get();
-    f = ww->fp;
-    for (i = 0; i < argc; ++i) {
-        const uint8_t *vstr = janet_to_string(argv[i]);
-        len = janet_string_length(vstr);
-        for (j = 0; j < len; ++j) {
-            putc(vstr[j], f);
-        }
-    }
-    putc('\n', f);
-    return janet_wrap_nil();
 }
 #+END_SRC
 ** Write File
@@ -1346,114 +1345,5 @@ static void write_multiple_files(weewiki_d *ww,
 
 
     sqlite3_finalize(stmt);
-}
-#+END_SRC
-** Parsing Org code in Janet
-#+NAME: static_funcdefs
-#+BEGIN_SRC c
-static Janet cfun_org(int32_t argc, Janet *argv);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-static Janet cfun_org(int32_t argc, Janet *argv)
-{
-    int32_t len;
-    weewiki_d *ww;
-    weewiki_export_d *ex;
-    const char *txt;
-
-    ww = weewiki_get();
-    ex = ww->ex;
-    txt = (const char *)janet_to_string(argv[0]);
-    len = strlen(txt);
-    weewiki_export_run(ex, txt, len);
-    return janet_wrap_nil();
-}
-#+END_SRC
-** Janet
-*** Setup
-#+NAME: funcdefs
-#+BEGIN_SRC c
-JanetTable * weewiki_janet_setup(void);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-JanetTable * weewiki_janet_setup(void)
-{
-    JanetTable *env;
-    janet_init();
-    env = janet_core_env(NULL);
-    janet_def(env,
-              "print",
-              janet_wrap_cfunction(cfun_io_print),
-              NULL);
-    janet_def(env,
-              "org",
-              janet_wrap_cfunction(cfun_org),
-              NULL);
-    janet_dostring(env,
-                   "(defn html-header () ())"
-                   "(defn html-footer () ())"
-                   "(def ww-dir \"\")",
-                   NULL, NULL);
-
-    return env;
-}
-#+END_SRC
-*** Cleanup
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void weewiki_janet_cleanup(void);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-void weewiki_janet_cleanup(void)
-{
-    janet_deinit();
-}
-#+END_SRC
-*** TODO Load Config
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void weewiki_janet_loadconfig(JanetTable *env);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-void weewiki_janet_loadconfig(JanetTable *env)
-{
-    FILE *config;
-    size_t config_sz;
-    char *tmp;
-
-    config = fopen("weewiki.janet", "r");
-
-    if (config != NULL) {
-        fseek(config, 0, SEEK_END);
-        config_sz = ftell(config);
-        tmp = calloc(1, config_sz + 1);
-        fseek(config, 0, SEEK_SET);
-        fread(tmp, 1, config_sz, config);
-        fclose(config);
-        janet_dostring(env, tmp, NULL, NULL);
-        free(tmp);
-    }
-}
-#+END_SRC
-*** TODO Get www-dir
-#+NAME: funcdefs
-#+BEGIN_SRC c
-const unsigned char * weewiki_janet_wwdir(JanetTable *env);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-const unsigned char * weewiki_janet_wwdir(JanetTable *env)
-{
-    const unsigned char *dir;
-    Janet out;
-
-    dir = NULL;
-    janet_dostring(env, "ww-dir", NULL, &out);
-    dir = janet_unwrap_string(out);
-    return dir;
 }
 #+END_SRC
