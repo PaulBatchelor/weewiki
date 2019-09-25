@@ -1,8 +1,15 @@
 WORGLE=worgle -g -Werror
 
-OBJ=weewiki.o janet/janet.o jan.o
+OBJ=weewiki.o jan.o
 
-CFLAGS += -g -Wall -O3
+# Janet objects
+OBJ+=\
+	janet/janet.o\
+	janet/init.gen.o\
+	janet/janet_main.o\
+	janet/line.o
+
+CFLAGS += -g -Wall -O3 -I.
 
 LIBS=-lsqlite3
 
@@ -14,7 +21,7 @@ default: weewiki orgparse_test
 %.c: %.org
 	$(WORGLE) $<
 
-janet/janet.o: janet/janet.c
+janet/%.o: janet/%.c
 	$(C99) -c $(CFLAGS) $< -o $@
 
 jan.o: jan.c

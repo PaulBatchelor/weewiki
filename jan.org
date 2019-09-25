@@ -27,7 +27,7 @@ For all things related to Janet.
 <<funcdefs>>
 #endif
 #+END_SRC
-** Janet Print
+* Janet Print
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static Janet cfun_io_print(int32_t argc, Janet *argv);
@@ -54,7 +54,7 @@ static Janet cfun_io_print(int32_t argc, Janet *argv)
     return janet_wrap_nil();
 }
 #+END_SRC
-** Parsing Org code in Janet
+* Parsing Org code in Janet
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static Janet cfun_org(int32_t argc, Janet *argv);
@@ -76,8 +76,8 @@ static Janet cfun_org(int32_t argc, Janet *argv)
     return janet_wrap_nil();
 }
 #+END_SRC
-** Janet
-*** Setup
+* Janet
+** Setup
 #+NAME: funcdefs
 #+BEGIN_SRC c
 JanetTable * weewiki_janet_setup(void);
@@ -89,24 +89,39 @@ JanetTable * weewiki_janet_setup(void)
     JanetTable *env;
     janet_init();
     env = janet_core_env(NULL);
-    janet_def(env,
-              "print",
-              janet_wrap_cfunction(cfun_io_print),
-              NULL);
-    janet_def(env,
-              "org",
-              janet_wrap_cfunction(cfun_org),
-              NULL);
-    janet_dostring(env,
-                   "(defn html-header () ())"
-                   "(defn html-footer () ())"
-                   "(def ww-dir \"\")",
-                   NULL, NULL);
-
+    weewiki_janet_cfuns(env);
     return env;
 }
 #+END_SRC
-*** Cleanup
+** Load C Functions
+All the custom C functions for janet are loaded here.
+This is called in setup, but is also called separately
+for the janet standalone in =janet_main=.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_janet_cfuns(JanetTable *env);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_janet_cfuns(JanetTable *env)
+{
+    janet_def(env,
+                "print",
+                janet_wrap_cfunction(cfun_io_print),
+                NULL);
+    janet_def(env,
+                "org",
+                janet_wrap_cfunction(cfun_org),
+                NULL);
+    janet_dostring(env,
+                    "(defn html-header () ())"
+                    "(defn html-footer () ())"
+                    "(def ww-dir \"\")",
+                    NULL, NULL);
+
+}
+#+END_SRC
+** Cleanup
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void weewiki_janet_cleanup(void);
@@ -118,7 +133,7 @@ void weewiki_janet_cleanup(void)
     janet_deinit();
 }
 #+END_SRC
-*** Load Config
+** Load Config
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void weewiki_janet_loadconfig(JanetTable *env);
@@ -145,7 +160,7 @@ void weewiki_janet_loadconfig(JanetTable *env)
     }
 }
 #+END_SRC
-*** Get www-dir
+** Get www-dir
 #+NAME: funcdefs
 #+BEGIN_SRC c
 const unsigned char * weewiki_janet_wwdir(JanetTable *env);

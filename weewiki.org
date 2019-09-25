@@ -789,7 +789,8 @@ static int p_sync(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* TODO Add/Remove Page
+* DONE Add/Remove Page
+CLOSED: [2019-09-25 Wed 15:36]
 Adds/removes a new page.
 ** add
 #+NAME: matching
@@ -1345,5 +1346,30 @@ static void write_multiple_files(weewiki_d *ww,
 
 
     sqlite3_finalize(stmt);
+}
+#+END_SRC
+* Janet
+Janet can be run as a standalone program with
+=weewiki janet=. It is almost identical to the
+vanilla janet program, except that the weewiki
+functions are loaded as well.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "janet", 5)) {
+    argc--;
+    argv++;
+    return p_janet(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_janet(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int janet_main(int argc, char *argv[]);
+static int p_janet(int argc, char *argv[])
+{
+    return janet_main(argc, argv);
 }
 #+END_SRC
