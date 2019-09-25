@@ -174,9 +174,13 @@ void weewiki_clean(weewiki_d *ww)
 ** Global Data Instance
 To make integration with Janet easier, a global =weewiki_d=
 pointer is used.
+
+For the janet standalone, a global variable is set and used
+by default.
 #+NAME: global_data
 #+BEGIN_SRC c
-static weewiki_d *WeeWiki = NULL;
+static weewiki_d iWeeWiki;
+static weewiki_d *WeeWiki = &iWeeWiki;
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c

@@ -108,13 +108,37 @@ void weewiki_janet_cfuns(JanetTable *env);
 void weewiki_janet_cfuns(JanetTable *env)
 {
     janet_def(env,
-                "print",
-                janet_wrap_cfunction(cfun_io_print),
-                NULL);
+              "print",
+              janet_wrap_cfunction(cfun_io_print),
+              NULL);
     janet_def(env,
-                "org",
-                janet_wrap_cfunction(cfun_org),
-                NULL);
+              "org",
+              janet_wrap_cfunction(cfun_org),
+              NULL);
+    janet_def(env,
+              "ww-open",
+              janet_wrap_cfunction(cfun_ww_open),
+              NULL);
+    janet_def(env,
+              "ww-close",
+              janet_wrap_cfunction(cfun_ww_close),
+              NULL);
+    janet_def(env,
+              "ww-add-page",
+              janet_wrap_cfunction(cfun_ww_add_page),
+              NULL);
+    janet_def(env,
+              "ww-add-link",
+              janet_wrap_cfunction(cfun_ww_add_link),
+              NULL);
+    janet_def(env,
+              "ww-sync",
+              janet_wrap_cfunction(cfun_ww_sync),
+              NULL);
+    janet_def(env,
+              "ww-clear",
+              janet_wrap_cfunction(cfun_ww_clear),
+              NULL);
     janet_dostring(env,
                     "(defn html-header () ())"
                     "(defn html-footer () ())"
@@ -178,5 +202,76 @@ const unsigned char * weewiki_janet_wwdir(JanetTable *env)
     janet_dostring(env, "ww-dir", NULL, &out);
     dir = janet_unwrap_string(out);
     return dir;
+}
+#+END_SRC
+** Open/Close database
+Should only be used in the janet standalone.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_open(int32_t argc, Janet *argv);
+static Janet cfun_ww_close(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_open(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
+}
+static Janet cfun_ww_close(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
+}
+#+END_SRC
+** Add Page
+Adds a page to the database.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_add_page(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_add_page(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
+}
+#+END_SRC
+** Add Link
+Adds a link to the note. Note that the mtime will be set to
+zero, so that the page is automatically pushed by default.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_add_link(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_add_link(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
+}
+#+END_SRC
+** Sync Database
+Equivalent to =weewiki sync=.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_sync(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_sync(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
+}
+#+END_SRC
+** Clear Database
+Clears data from existing wiki db.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_clear(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_clear(int32_t argc, Janet *argv)
+{
+    return janet_wrap_nil();
 }
 #+END_SRC

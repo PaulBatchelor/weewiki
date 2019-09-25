@@ -75,6 +75,9 @@ int janet_main(int argc, char **argv) {
     /* Set up VM */
     janet_init();
 
+    /* set up weewiki global data */
+    weewiki_init(weewiki_get());
+
     /* Replace original getline with new line getter */
     JanetTable *replacements = janet_table(0);
     janet_table_put(replacements, janet_csymbolv("getline"), janet_wrap_cfunction(janet_line_getter));
