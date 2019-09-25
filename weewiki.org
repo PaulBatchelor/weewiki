@@ -1373,3 +1373,46 @@ static int p_janet(int argc, char *argv[])
     return janet_main(argc, argv);
 }
 #+END_SRC
+* Dump (Work in progress)
+Dumps all of the contents of a weewiki database into a
+janet script. When the script is run with =weewiki janet=,
+it will regenerate the database.
+
+This is particularly useful for bootstrapping or updating
+a database across multiple computers.
+
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "dump", 4)) {
+    argc--;
+    argv++;
+    return p_dump(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_dump(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_dump(int argc, char *argv[])
+{
+    weewiki_d ww;
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    if (argc < 2) {
+        fprintf(stderr,
+                "Usage: %s filename\n",
+                argv[0]);
+        return 1;
+    }
+
+    fprintf(stderr, "Not yet implemented.\n");
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return 0;
+}
+#+END_SRC
