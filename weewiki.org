@@ -818,7 +818,63 @@ static int p_add(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-** rm
+** del
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "del", 3)) {
+    argc--;
+    argv++;
+    return p_del(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_del(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_del(int argc, char *argv[])
+{
+    weewiki_d ww;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    rc = 0;
+    if (argc < 2) {
+        fprintf(stderr,
+                "Usage: %s key\n",
+                argv[0]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "DELETE FROM wiki "
+                       "WHERE (key ==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        rc = 1;
+    }
+
+    sqlite3_finalize(stmt);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return rc;
+}
+#+END_SRC
+
 * DONE Export
 CLOSED: [2019-09-24 Tue 21:13]
 ** Command
