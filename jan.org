@@ -17,6 +17,8 @@ For all things related to Janet.
 
 #include "orgparse.h"
 #include "weewiki.h"
+
+#include "jan.h"
 <<static_funcdefs>>
 <<functions>>
 #+END_SRC
