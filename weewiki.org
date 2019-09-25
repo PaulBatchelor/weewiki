@@ -920,41 +920,11 @@ static int p_export(int argc, char *argv[])
         db = ww.db;
         weewiki_set(&ww);
 
-        janet_init();
-        ex.env = janet_core_env(NULL);
-
-        janet_def(ex.env,
-                  "print",
-                  janet_wrap_cfunction(cfun_io_print),
-                  NULL);
-        janet_def(ex.env,
-                  "org",
-                  janet_wrap_cfunction(cfun_org),
-                  NULL);
-        janet_dostring(ex.env,
-                       "(defn html-header () ())"
-                       "(defn html-footer () ())"
-                       "(def ww-dir \"\")",
-                       NULL, NULL);
-
-        config = fopen("weewiki.janet", "r");
-
-        if (config != NULL) {
-            fseek(config, 0, SEEK_END);
-            config_sz = ftell(config);
-            tmp = calloc(1, config_sz + 1);
-            fseek(config, 0, SEEK_SET);
-            fread(tmp, 1, config_sz, config);
-            fclose(config);
-            janet_dostring(ex.env, tmp, NULL, NULL);
-            free(tmp);
-        }
-
-        janet_dostring(ex.env, "ww-dir", NULL, &out);
-
-        dir = janet_unwrap_string(out);
-
         weewiki_orgparse_setup(&ex.op);
+        ex.env = weewiki_janet_setup();
+
+        weewiki_janet_loadconfig(ex.env);
+        dir = weewiki_janet_wwdir(ex.env);
 
         if (export_page) {
             write_single_file(&ww, &ex, db, dir, argv[1]);
@@ -962,7 +932,7 @@ static int p_export(int argc, char *argv[])
             write_multiple_files(&ww, &ex, db, dir);
         }
 
-        janet_deinit();
+        weewiki_janet_cleanup();
     }
 
     weewiki_close(&ww);
@@ -1398,5 +1368,92 @@ static Janet cfun_org(int32_t argc, Janet *argv)
     len = strlen(txt);
     weewiki_export_run(ex, txt, len);
     return janet_wrap_nil();
+}
+#+END_SRC
+** Janet
+*** Setup
+#+NAME: funcdefs
+#+BEGIN_SRC c
+JanetTable * weewiki_janet_setup(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+JanetTable * weewiki_janet_setup(void)
+{
+    JanetTable *env;
+    janet_init();
+    env = janet_core_env(NULL);
+    janet_def(env,
+              "print",
+              janet_wrap_cfunction(cfun_io_print),
+              NULL);
+    janet_def(env,
+              "org",
+              janet_wrap_cfunction(cfun_org),
+              NULL);
+    janet_dostring(env,
+                   "(defn html-header () ())"
+                   "(defn html-footer () ())"
+                   "(def ww-dir \"\")",
+                   NULL, NULL);
+
+    return env;
+}
+#+END_SRC
+*** Cleanup
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_janet_cleanup(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_janet_cleanup(void)
+{
+    janet_deinit();
+}
+#+END_SRC
+*** TODO Load Config
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_janet_loadconfig(JanetTable *env);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_janet_loadconfig(JanetTable *env)
+{
+    FILE *config;
+    size_t config_sz;
+    char *tmp;
+
+    config = fopen("weewiki.janet", "r");
+
+    if (config != NULL) {
+        fseek(config, 0, SEEK_END);
+        config_sz = ftell(config);
+        tmp = calloc(1, config_sz + 1);
+        fseek(config, 0, SEEK_SET);
+        fread(tmp, 1, config_sz, config);
+        fclose(config);
+        janet_dostring(env, tmp, NULL, NULL);
+        free(tmp);
+    }
+}
+#+END_SRC
+*** TODO Get www-dir
+#+NAME: funcdefs
+#+BEGIN_SRC c
+const unsigned char * weewiki_janet_wwdir(JanetTable *env);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+const unsigned char * weewiki_janet_wwdir(JanetTable *env)
+{
+    const unsigned char *dir;
+    Janet out;
+
+    dir = NULL;
+    janet_dostring(env, "ww-dir", NULL, &out);
+    dir = janet_unwrap_string(out);
+    return dir;
 }
 #+END_SRC

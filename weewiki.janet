@@ -1,5 +1,4 @@
 (def ww-dir "_site/wiki")
-(import build/sqlite3 :as sql)
 
 (defn ref (link name)
   (org
