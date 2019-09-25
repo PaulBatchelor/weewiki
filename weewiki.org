@@ -123,7 +123,8 @@ FILE * weewiki_fp(weewiki_d *ww);
 #+BEGIN_SRC c
 FILE * weewiki_fp(weewiki_d *ww)
 {
-    return ww->fp;
+    if (ww == NULL) return stdout;
+    else return ww->fp;
 }
 #+END_SRC
 *** Global Exporter
@@ -942,7 +943,6 @@ static int p_del(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-
 * DONE Export
 CLOSED: [2019-09-24 Tue 21:13]
 ** Command
@@ -1435,18 +1435,87 @@ static int p_dump(int argc, char *argv[]);
 static int p_dump(int argc, char *argv[])
 {
     weewiki_d ww;
+    sqlite3 *db;
+    int rc;
+    const char *key, *value, *fname;
+    sqlite3_stmt *stmt;
+    FILE *fp;
+
+
+    if (argc < 2) {
+        fp = stdout;
+    } else {
+        fp = fopen(argv[1], "w");
+        if (fp == NULL) {
+            fprintf(stderr,
+                    "Could not open '%s' for reading.\n",
+                    argv[1]);
+            return 1;
+        }
+    }
 
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
 
-    if (argc < 2) {
-        fprintf(stderr,
-                "Usage: %s filename\n",
-                argv[0]);
-        return 1;
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "SELECT wiki.key, wiki.value "
+                       "FROM wiki LEFT JOIN wikilinks "
+                       "ON wiki.key = wikilinks.key "
+                       "WHERE wikilinks.key IS NULL;"
+                       "FROM wikilinks;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    fprintf(fp, "# open and clear wiki db\n\n");
+    fprintf(fp, "(ww-open \"a.db\")\n");
+    fprintf(fp, "(ww-clear)\n");
+
+    fprintf(fp, "\n# unlinked pages\n\n");
+
+    while (1) {
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_ROW) break;
+        key = (const char *)sqlite3_column_text(stmt, 0);
+        value = (const char *)sqlite3_column_text(stmt, 1);
+        if (value == NULL) {
+            fprintf(fp, "(ww-add-page \"%s\" \"\")\n", key);
+        } else {
+            fprintf(fp, "(ww-add-page \"%s\" `%s`)\n",
+                    key, value);
+        }
     }
 
-    fprintf(stderr, "Not yet implemented.\n");
+
+    sqlite3_finalize(stmt);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT key, filename "
+                       "FROM wikilinks;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    fprintf(fp, "\n# linked lages\n\n");
+
+    while (1) {
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_ROW) break;
+        key = (const char *)sqlite3_column_text(stmt, 0);
+        fname = (const char *)sqlite3_column_text(stmt, 1);
+        fprintf(fp, "(ww-add-link \"%s\" \"%s\")\n",
+                key,
+                fname);
+    }
+
+
+    sqlite3_finalize(stmt);
+
+    fprintf(fp, "\n# sync and close\n\n");
+    fprintf(fp, "(ww-sync)\n");
+    fprintf(fp, "(ww-close)\n");
 
     weewiki_close(&ww);
     weewiki_clean(&ww);
