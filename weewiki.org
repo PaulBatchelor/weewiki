@@ -1538,7 +1538,7 @@ static int p_janet(int argc, char *argv[])
     return janet_main(argc, argv);
 }
 #+END_SRC
-* Dump (Work in progress)
+* Dump
 Dumps all of the contents of a weewiki database into a
 janet script. When the script is run with =weewiki janet=,
 it will regenerate the database.
