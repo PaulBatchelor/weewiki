@@ -401,8 +401,7 @@ void weewiki_clear(weewiki_d *ww)
                 NULL);
 }
 #+END_SRC
-* DONE Database
-CLOSED: [2019-09-14 Sat 12:46]
+* Database
 ** Open
 A database is opened with =weewiki_open=.
 #+NAME: funcdefs
@@ -619,8 +618,7 @@ int weewiki_exists(weewiki_d *ww, const char *key)
     return rc;
 }
 #+END_SRC
-* DONE Push/Pull
-CLOSED: [2019-09-14 Sat 10:44]
+* Push/Pull
 ** DONE Push
 CLOSED: [2019-09-14 Sat 09:24]
 Pushes a file to database.
@@ -697,8 +695,7 @@ static int p_pull(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* DONE Edit
-CLOSED: [2019-09-14 Sat 12:46]
+* Edit
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "edit", 4)) {
@@ -884,8 +881,7 @@ static int p_link(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* DONE Sync
-CLOSED: [2019-09-23 Mon 12:09]
+* Sync
 The =sync= command is used to sync files between the
 database and external files. It will iterate through the
 =wikilinks= tables and update things by comparing internal
@@ -935,8 +931,7 @@ static int p_sync(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* DONE Add/Remove Page
-CLOSED: [2019-09-25 Wed 15:36]
+* Add/Remove Page
 Adds/removes a new page.
 ** add
 #+NAME: matching
@@ -1067,8 +1062,7 @@ static int p_del(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-* DONE Export
-CLOSED: [2019-09-24 Tue 21:13]
+* Export
 ** Command
 #+NAME: matching
 #+BEGIN_SRC c
