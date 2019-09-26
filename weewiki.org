@@ -59,12 +59,18 @@ int main(int argc, char *argv[])
 #ifndef WEEWIKI_H
 #define WEEWIKI_H
 #ifndef JANET_H_defined
+#include <stdint.h>
 typedef struct JanetTable JanetTable;
 typedef struct Janet Janet;
 int janet_dostring(JanetTable *env,
-                   const char *str,
+                   const uint8_t *bytes,
                    const char *sourcePath,
                    Janet *out);
+int janet_dobytes(JanetTable *env,
+                  const uint8_t *bytes,
+                  int32_t len,
+                  const char *sourcePath,
+                  Janet *out);
 #endif
 
 <<typedefs>>
@@ -1213,18 +1219,18 @@ static void html_bold(void *ud,
 #+BEGIN_SRC c
 orgparse_set_bold(op, html_bold);
 #+END_SRC
-*** Aux (TODO: bring back)
+*** Aux
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_aux(void *ud,
                      const char *str,
                      size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* ex = ud; */
-    /* janet_dobytes(ex->env, */
-    /*               (const uint8_t *)str, sz, */
-    /*               NULL, NULL); */
+    weewiki_export_d *ex;
+    ex = ud;
+    janet_dobytes(ex->env,
+                  (const uint8_t *)str, sz,
+                  NULL, NULL);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -1372,11 +1378,15 @@ static void write_file(weewiki_export_d *ex,
                        const unsigned char *txt,
                        size_t txt_sz)
 {
-    janet_dostring(ex->env, "(html-header)", NULL, NULL);
+    janet_dostring(ex->env,
+                   (const unsigned char *)"(html-header)",
+                   NULL, NULL);
     weewiki_export_run(ex,
                         (const char *)txt,
                         txt_sz);
-    janet_dostring(ex->env, "(html-footer)", NULL, NULL);
+    janet_dostring(ex->env,
+                   (const unsigned char *)"(html-footer)",
+                   NULL, NULL);
 }
 #+END_SRC
 ** Make Filehandle

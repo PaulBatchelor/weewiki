@@ -69,7 +69,6 @@ static Janet cfun_org(int32_t argc, Janet *argv)
     weewiki_d *ww;
     weewiki_export_d *ex;
     const char *txt;
-
     ww = weewiki_get();
     ex = weewiki_ex(ww);
     txt = (const char *)janet_to_string(argv[0]);
