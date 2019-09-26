@@ -1576,7 +1576,7 @@ static int p_dump(int argc, char *argv[])
         fp = fopen(argv[1], "w");
         if (fp == NULL) {
             fprintf(stderr,
-                    "Could not open '%s' for reading.\n",
+                    "Could not open '%s' for writing.\n",
                     argv[1]);
             return 1;
         }
@@ -1647,6 +1647,76 @@ static int p_dump(int argc, char *argv[])
 
     weewiki_close(&ww);
     weewiki_clean(&ww);
+    return 0;
+}
+#+END_SRC
+* Parse
+The =parse= command will parse an org file via orgparse
+and write the HTML output. This is primarily
+useful for debugging scripts.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "parse", 5)) {
+    argc--;
+    argv++;
+    return p_parse(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_parse(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_parse(int argc, char *argv[])
+{
+    weewiki_d ww;
+    FILE *fp;
+    unsigned char *txt;
+    size_t sz;
+    weewiki_export_d ex;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s file.org\n", argv[0]);
+        return 1;
+    } else {
+        fp = fopen(argv[1], "r");
+        if (fp == NULL) {
+            fprintf(stderr,
+                    "Could not open '%s' for reading.\n",
+                    argv[1]);
+            return 1;
+        }
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    weewiki_set(&ww);
+
+    weewiki_orgparse_setup(&ex.op);
+    ex.env = weewiki_janet_setup();
+
+    weewiki_janet_loadconfig(ex.env);
+
+    ex.fp = stdout;
+    ww.fp = ex.fp;
+    ww.ex = &ex;
+
+    fseek(fp, 0, SEEK_END);
+    sz = ftell(fp);
+    txt = calloc(1, sz + 1);
+    fseek(fp, 0, SEEK_SET);
+    fread(txt, 1, sz, fp);
+    fclose(fp);
+
+    write_file(&ex, txt, sz);
+
+    weewiki_janet_cleanup();
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+
     return 0;
 }
 #+END_SRC
