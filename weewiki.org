@@ -199,6 +199,202 @@ weewiki_d *weewiki_get(void)
     return WeeWiki;
 }
 #+END_SRC
+* High Level Functions
+Designed to be used inside Janet scripts.
+** Add Page
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_add_page(weewiki_d *ww,
+                      const char *key,
+                      const char *val);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_add_page(weewiki_d *ww,
+                      const char *key,
+                      const char *val)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = ww->db;
+
+    sqlite3_prepare_v2(db,
+                       "INSERT INTO wiki"
+                       "(key, value)\n"
+                       "VALUES(?1, ?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, val, -1, NULL);
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        rc = 1;
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
+** Link Page
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_add_link(weewiki_d *ww,
+                      const char *key,
+                      const char *fname);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_add_link(weewiki_d *ww,
+                      const char *key,
+                      const char *fname)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = ww->db;
+
+    sqlite3_prepare_v2(db,
+                       "INSERT INTO wikilinks"
+                       "(key, filename)\n"
+                       "VALUES(?1, ?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, fname, -1, NULL);
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        rc = 1;
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
+** Sync
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_sync(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void update_mtime(weewiki_d *ww,
+                         const char *fname,
+                         const char *key)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    struct stat st;
+    unsigned int mtime;
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "UPDATE wikilinks SET mtime=?1 "
+                       "WHERE (key==?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    stat(fname, &st);
+    mtime = st.st_mtime;
+
+    sqlite3_bind_int(stmt, 1, mtime);
+    sqlite3_bind_text(stmt, 2, key, -1, NULL);
+
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+}
+
+static int sync_file(weewiki_d *ww, sqlite3_stmt *stmt)
+{
+    int rc;
+    const char *fname;
+    const char *key;
+    unsigned int int_mtime;
+    unsigned int ext_mtime;
+    struct stat st;
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) return 0;
+    key = (const char *)sqlite3_column_text(stmt, 0);
+    fname = (const char *)sqlite3_column_text(stmt, 1);
+    int_mtime = sqlite3_column_int(stmt, 2);
+
+    if (access(fname, F_OK) == -1) {
+        ext_mtime = 0;
+    } else {
+        stat(fname, &st);
+        ext_mtime = st.st_mtime;
+    }
+
+    if (int_mtime == ext_mtime) {
+        printf("SKIP %s\n", key);
+    } else if (ext_mtime > int_mtime) {
+        printf("PUSH %s %s\n", fname, key);
+        weewiki_push(ww, fname, key);
+        update_mtime(ww, fname, key);
+    } else if (int_mtime > ext_mtime) {
+        printf("PULL %s %s\n", key, fname);
+        weewiki_pull(ww, key, fname);
+    }
+
+    return 1;
+}
+
+int weewiki_sync(weewiki_d *ww)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    rc = 0;
+    db = ww->db;
+
+    sqlite3_prepare_v2(db,
+                       "SELECT key, filename, mtime "
+                       "FROM wikilinks;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    while (1) {
+        if (!sync_file(ww, stmt)) {
+            break;
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return rc;
+}
+#+END_SRC
+** Clear
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_clear(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_clear(weewiki_d *ww)
+{
+    sqlite3_exec(ww->db,
+                "DELETE FROM wiki WHERE 1;\n",
+                NULL,
+                NULL,
+                NULL);
+    sqlite3_exec(ww->db,
+                "DELETE FROM wikilinks WHERE 1;\n",
+                NULL,
+                NULL,
+                NULL);
+}
+#+END_SRC
 * DONE Database
 CLOSED: [2019-09-14 Sat 12:46]
 ** Open
@@ -713,75 +909,9 @@ static int p_sync(int argc, char *argv[]);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static void update_mtime(weewiki_d *ww,
-                         const char *fname,
-                         const char *key)
-{
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    struct stat st;
-    unsigned int mtime;
-
-    db = ww->db;
-    sqlite3_prepare_v2(db,
-                       "UPDATE wikilinks SET mtime=?1 "
-                       "WHERE (key==?2);",
-                       -1,
-                       &stmt,
-                       NULL);
-
-    stat(fname, &st);
-    mtime = st.st_mtime;
-
-    sqlite3_bind_int(stmt, 1, mtime);
-    sqlite3_bind_text(stmt, 2, key, -1, NULL);
-
-    sqlite3_step(stmt);
-    sqlite3_finalize(stmt);
-}
-
-static int sync_file(weewiki_d *ww, sqlite3_stmt *stmt)
-{
-    int rc;
-    const char *fname;
-    const char *key;
-    unsigned int int_mtime;
-    unsigned int ext_mtime;
-    struct stat st;
-
-    rc = sqlite3_step(stmt);
-
-    if (rc != SQLITE_ROW) return 0;
-    key = (const char *)sqlite3_column_text(stmt, 0);
-    fname = (const char *)sqlite3_column_text(stmt, 1);
-    int_mtime = sqlite3_column_int(stmt, 2);
-
-    if (access(fname, F_OK) == -1) {
-        ext_mtime = 0;
-    } else {
-        stat(fname, &st);
-        ext_mtime = st.st_mtime;
-    }
-
-    if (int_mtime == ext_mtime) {
-        printf("SKIP %s\n", key);
-    } else if (ext_mtime > int_mtime) {
-        printf("PUSH %s %s\n", fname, key);
-        weewiki_push(ww, fname, key);
-        update_mtime(ww, fname, key);
-    } else if (int_mtime > ext_mtime) {
-        printf("PULL %s %s\n", key, fname);
-        weewiki_pull(ww, key, fname);
-    }
-
-    return 1;
-}
-
 static int p_sync(int argc, char *argv[])
 {
     weewiki_d ww;
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
     int rc;
 
     if (access(argv[2], F_OK) != -1) {
@@ -792,23 +922,7 @@ static int p_sync(int argc, char *argv[])
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
 
-    db = ww.db;
-
-    sqlite3_prepare_v2(db,
-                       "SELECT key, filename, mtime "
-                       "FROM wikilinks;",
-                       -1,
-                       &stmt,
-                       NULL);
-
-    while (1) {
-        if (!sync_file(&ww, stmt)) {
-            rc = 1;
-            break;
-        }
-    }
-
-    sqlite3_finalize(stmt);
+    rc = weewiki_sync(&ww);
 
     weewiki_close(&ww);
     weewiki_clean(&ww);

@@ -215,10 +215,22 @@ static Janet cfun_ww_close(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_ww_open(int32_t argc, Janet *argv)
 {
+    const uint8_t *filename;
+    weewiki_d *ww;
+    janet_fixarity(argc, 1);
+
+    filename = janet_getstring(argv, 0);
+    ww = weewiki_get();
+
+    weewiki_open(ww, (const char *)filename);
     return janet_wrap_nil();
 }
+
 static Janet cfun_ww_close(int32_t argc, Janet *argv)
 {
+    weewiki_d *ww;
+    ww = weewiki_get();
+    weewiki_close(ww);
     return janet_wrap_nil();
 }
 #+END_SRC
@@ -232,6 +244,17 @@ static Janet cfun_ww_add_page(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_ww_add_page(int32_t argc, Janet *argv)
 {
+    const char *key;
+    const char *val;
+    weewiki_d *ww;
+
+    janet_fixarity(argc, 2);
+    key = (const char *)janet_getstring(argv, 0);
+    val = (const char *)janet_getstring(argv, 1);
+    ww = weewiki_get();
+
+    weewiki_add_page(ww, key, val);
+
     return janet_wrap_nil();
 }
 #+END_SRC
@@ -246,6 +269,16 @@ static Janet cfun_ww_add_link(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_ww_add_link(int32_t argc, Janet *argv)
 {
+    const char *key;
+    const char *fname;
+    weewiki_d *ww;
+
+    janet_fixarity(argc, 2);
+    key = (const char *)janet_getstring(argv, 0);
+    fname = (const char *)janet_getstring(argv, 1);
+    ww = weewiki_get();
+
+    weewiki_add_link(ww, key, fname);
     return janet_wrap_nil();
 }
 #+END_SRC
@@ -259,6 +292,9 @@ static Janet cfun_ww_sync(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_ww_sync(int32_t argc, Janet *argv)
 {
+    weewiki_d *ww;
+    ww = weewiki_get();
+    weewiki_sync(ww);
     return janet_wrap_nil();
 }
 #+END_SRC
@@ -272,6 +308,9 @@ static Janet cfun_ww_clear(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_ww_clear(int32_t argc, Janet *argv)
 {
+    weewiki_d *ww;
+    ww = weewiki_get();
+    weewiki_clear(ww);
     return janet_wrap_nil();
 }
 #+END_SRC
