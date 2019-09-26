@@ -1,10 +1,11 @@
 (def ww-dir "_site/wiki")
+(def webroot "/wiki")
 
 (defn ref (link name)
   (org
    (string
     "[["
-    (string ww-dir "/" link ".html")
+    (string webroot "/" link ".html")
     "]["
     name
     "]]")))
@@ -17,7 +18,7 @@
 <head>
 
 <meta charset="utf-8">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="/css/style.css">
 
 </head>
 <body>
