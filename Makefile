@@ -7,7 +7,8 @@ OBJ+=\
 	janet/janet.o\
 	janet/init.gen.o\
 	janet/janet_main.o\
-	janet/line.o
+	janet/line.o \
+	janet/janet_sqlite.o
 
 CFLAGS += -g -Wall -O3 -I.
 
