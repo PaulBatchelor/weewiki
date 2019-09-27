@@ -898,7 +898,6 @@ static int parse_text(orgparse_state *state)
                             (n - mark) + 1);
                 }
             }
-            if (n == (sz - 2)) orgparse_pgrph_end(op, ud);
             break;
         } else if (state->newline) {
             state->newline = 0;
