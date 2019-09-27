@@ -313,8 +313,8 @@ int orgparse_test_suite(void)
 
     for(n = 0; n < ntests; n++) {
         e = &Tests[n];
-        printf("[%d/%d] %s: ", n + 1, ntests, e->name);
         rc = e->test();
+        printf("[%d/%d] %s: ", n + 1, ntests, e->name);
         switch (rc) {
             case OK:
                 printf("OK\n");
@@ -352,6 +352,41 @@ returns "okay".
 static int test_foo(void)
 {
     return OK;
+}
+#+END_SRC
+*** Extra Newline at Ending Aux Block
+This is a particular edge case that happens when an aux
+block ends up at the end of a text block. It will go and
+print an extra newline statement.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Extra newline at ending aux block", test_ending_auxblock},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static void ending_auxblock_newline(void *ud,
+                                    const char *str,
+                                    size_t sz)
+{
+    int *nl;
+    nl = ud;
+    *nl = (*nl) + 1;
+}
+
+static int test_ending_auxblock(void)
+{
+    orgparse op;
+    int nl;
+
+    nl = 0;
+    orgparse_init(&op);
+    orgparse_set_newline(&op, ending_auxblock_newline);
+    orgparse_run(&op, "@! some text !@\n\none.", 23, &nl);
+    if (nl != 1) {
+        printf("%d newlines when it should have been 1\n",
+               nl);
+    }
+    return FAIL;
 }
 #+END_SRC
 * Main Interface
