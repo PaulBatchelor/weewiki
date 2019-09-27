@@ -606,7 +606,6 @@ void orgparse_run(orgparse *op,
                   size_t sz,
                   void *ud)
 {
-    const char *blk;
     orgparse_state state;
 
     state.op = op;
@@ -620,30 +619,24 @@ void orgparse_run(orgparse *op,
 
     for (state.pos = 0; state.pos < sz; state.pos++) {
         if (state.mode == 0) {
-            if (parse_comment(txt, sz, &state.pos)) {
+            if (parse_comment(&state)) {
                 continue;
             }
-            if (parse_codeblock(op, txt, sz, ud,
-                                &state.pos,
-                                &state.mode,
-                                &blk,
-                                &state.len)) {
+            if (parse_codeblock(&state)) {
                 continue;
             } else if (parse_header(&state)) {
                 continue;
-            } else if (parse_name(op, txt, sz, ud, &state.pos)) {
+            } else if (parse_name(&state)) {
                 continue;
-            } else if (parse_title(op, txt, sz, ud, &state.pos)) {
+            } else if (parse_title(&state)) {
                 continue;
             } else {
-                parse_text(op, txt, sz, ud, &state.pos,
-                           &state.mode, &blk, &state.len);
+                parse_text(&state);
             }
         } else if (state.mode == 1) {
-            parse_codeblock(op, txt, sz, ud,
-                            &state.pos, &state.mode, &blk, &state.len);
+            parse_codeblock(&state);
         } else if (state.mode == 2) {
-            if (parse_aux_doiend(txt, sz, state.pos)) {
+            if (parse_aux_doiend(&state)) {
                 <<end_the_aux_block>>
             } else {
                 <<increment_aux_line>>
@@ -744,30 +737,34 @@ that is non-text. Along the way, the text will check for
 formatting tags and links on a line by line basis.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_text(orgparse *op,
-                      const char *str,
-                      size_t sz,
-                      void *ud,
-                      size_t *pos,
-                      int *mode,
-                      const char **buf,
-                      size_t *len);
+static int parse_text(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_text(orgparse *op,
-                      const char *str,
-                      size_t sz,
-                      void *ud,
-                      size_t *pos,
-                      int *mode,
-                      const char **buf,
-                      size_t *len)
+static int parse_text(orgparse_state *state)
 {
     size_t n;
     size_t start;
     size_t mark;
     int rc;
+
+    orgparse *op;
+    const char *str;
+    size_t sz;
+    void *ud;
+    size_t *pos;
+    int *mode;
+    const char **buf;
+    size_t *len;
+
+    op = state->op;
+    str = state->txt;
+    sz = state->sz;
+    ud = state->ud;
+    pos = &state->pos;
+    mode = &state->mode;
+    buf = &state->blk;
+    len = &state->len;
 
     rc = 0;
     start = *pos;
@@ -1157,18 +1154,22 @@ Any thing that starts with '# ' (hash + space) is considered
 to be a comment, and the line will be ignored.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_comment(const char *txt,
-                         size_t sz,
-                         size_t *pos);
+static int parse_comment(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_comment(const char *txt,
-                         size_t sz,
-                         size_t *pos)
+static int parse_comment(orgparse_state *state)
 {
     size_t start;
     size_t n;
+    const char *txt;
+    size_t sz;
+    size_t *pos;
+
+    txt = state->txt;
+    sz = state->sz;
+    pos = &state->pos;
+
     if ((sz - *pos) < 2) return 0;
     if (txt[*pos] != '#') return 0;
     if (txt[*pos + 1] != ' ') return 0;
@@ -1286,25 +1287,11 @@ A codeblock is a set of lines smooshed between
 '#+BEGIN_SRC' and '#+END_SRC' tags.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_codeblock(orgparse *op,
-                           const char *txt,
-                           size_t sz,
-                           void *ud,
-                           size_t *pos,
-                           int *mode,
-                           const char **blk,
-                           size_t *blklen);
+static int parse_codeblock(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_codeblock(orgparse *op,
-                           const char *txt,
-                           size_t sz,
-                           void *ud,
-                           size_t *pos,
-                           int *mode,
-                           const char **blk,
-                           size_t *blklen)
+static int parse_codeblock(orgparse_state *state)
 {
     int rc;
     size_t start;
@@ -1315,6 +1302,24 @@ static int parse_codeblock(orgparse *op,
     size_t totallen;
     size_t n;
     int new_block;
+
+    orgparse *op;
+    const char *txt;
+    size_t sz;
+    void *ud;
+    size_t *pos;
+    int *mode;
+    const char **blk;
+    size_t *blklen;
+
+    op = state->op;
+    txt = state->txt;
+    sz = state->sz;
+    ud = state->ud;
+    pos = &state->pos;
+    mode = &state->mode;
+    blk = &state->blk;
+    blklen = &state->len;
 
     start = *pos;
     cmdlen = 0;
@@ -1371,19 +1376,11 @@ static int parse_codeblock(orgparse *op,
 Parses a "#+NAME" command.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_name(orgparse *op,
-                      const char *txt,
-                      size_t sz,
-                      void *ud,
-                      size_t *pos);
+static int parse_name(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_name(orgparse *op,
-                      const char *txt,
-                      size_t sz,
-                      void *ud,
-                      size_t *pos)
+static int parse_name(orgparse_state *state)
 {
     int rc;
     size_t start;
@@ -1392,6 +1389,18 @@ static int parse_name(orgparse *op,
     const char *cmd;
     const char *cmdstr;
     size_t totallen;
+
+    orgparse *op;
+    const char *txt;
+    size_t sz;
+    void *ud;
+    size_t *pos;
+
+    op = state->op;
+    txt = state->txt;
+    sz = state->sz;
+    ud = state->ud;
+    pos = &state->pos;
 
     start = *pos;
     cmdlen = 0;
@@ -1487,25 +1496,22 @@ The only way a aux block ends is with the magic tag '!@'.
 This is checked with the function =parse_aux_doiend=.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_aux_doiend(const char *str,
-                            size_t sz,
-                            size_t n);
+static int parse_aux_doiend(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_aux_doiend(const char *str,
-                            size_t sz,
-                            size_t n)
+static int parse_aux_doiend(orgparse_state *state)
 {
-    if ((sz - n) < 2) return 0;
-    return (str[n] == '!' && str[n + 1] == '@');
+    if ((state->sz - state->pos) < 2) return 0;
+    return (state->txt[state->pos] == '!' &&
+            state->txt[state->pos + 1] == '@');
 }
 #+END_SRC
 **** Ending The Aux Block
 #+NAME: end_the_aux_block
 #+BEGIN_SRC c
 if (op->aux != NULL) {
-    op->aux(ud, blk, state.len - 1);
+    op->aux(ud, state.blk, state.len - 1);
 }
 state.mode = 0;
 state.pos++;
@@ -1521,19 +1527,11 @@ state.len++;
 Parses the =TITLE= commmand.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_title(orgparse *op,
-                       const char *txt,
-                       size_t sz,
-                       void *ud,
-                       size_t *pos);
+static int parse_title(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_title(orgparse *op,
-                       const char *txt,
-                       size_t sz,
-                       void *ud,
-                       size_t *pos)
+static int parse_title(orgparse_state *state)
 {
     int rc;
     size_t start;
@@ -1542,6 +1540,19 @@ static int parse_title(orgparse *op,
     const char *cmd;
     const char *cmdstr;
     size_t totallen;
+
+
+    orgparse *op;
+    const char *txt;
+    size_t sz;
+    void *ud;
+    size_t *pos;
+
+    op = state->op;
+    txt = state->txt;
+    sz = state->sz;
+    ud = state->ud;
+    pos = &state->pos;
 
     start = *pos;
     cmdlen = 0;
