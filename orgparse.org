@@ -253,6 +253,22 @@ static void test_link(void *ud,
 #+BEGIN_SRC c
 orgparse_set_link(op, test_link);
 #+END_SRC
+*** Paragraph
+#+NAME: test_callbacks
+#+BEGIN_SRC c
+static void test_pgrph(void *ud, int mode)
+{
+    if (mode) {
+        printf("PARAGRAPH END\n");
+    } else {
+        printf("PARAGRAPH BEGIN\n");
+    }
+}
+#+END_SRC
+#+NAME: setup_test_callbacks
+#+BEGIN_SRC c
+orgparse_set_pgrph(op, test_pgrph);
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -560,6 +576,65 @@ void orgparse_set_link(orgparse *op, orgparse_link f)
     op->link = f;
 }
 #+END_SRC
+*** Paragraph
+The pargraph callback gets called anytime a paragraph block
+starts or end. For HTML generation, this will be in charge
+of generating p-tags.
+
+A paragraph starts when a new text block begins, and ends
+with a line break, or major mode change (such as for a code
+block or header).
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef void (*orgparse_pgrph)(void *, int);
+#+END_SRC
+#+NAME: interface
+#+BEGIN_SRC c
+orgparse_pgrph pgrph;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+op->pgrph = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_set_pgrph(orgparse *op, orgparse_pgrph f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_set_pgrph(orgparse *op, orgparse_pgrph f)
+{
+    op->pgrph = f;
+}
+#+END_SRC
+
+A paragraph begins with =orgparse_pgrph_begin=.
+A paragraph ends with =orgparse_pgrph_end=.
+Note that neither of these functions actually check to see
+if they are *supposed* to be beginning or ending. That logic
+is done elsewhere.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_pgrph_begin(orgparse *op, void *ud);
+void orgparse_pgrph_end(orgparse *op, void *ud);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_pgrph_begin(orgparse *op, void *ud)
+{
+    if (op->pgrph != NULL) {
+        op->pgrph(ud, 0);
+    }
+}
+
+void orgparse_pgrph_end(orgparse *op, void *ud)
+{
+    if (op->pgrph != NULL) {
+        op->pgrph(ud, 1);
+    }
+}
+#+END_SRC
 * Parsing
 ** Orgparse State Struct
 All mutable orgparse data is contained inside of a struct
@@ -580,8 +655,11 @@ struct orgparse_state {
     void *ud;
     size_t pos;
     int mode;
+    int pmode;
+    int txtmode;
     const char *blk;
     size_t len;
+    int newline;
 };
 #+END_SRC
 ** Top Level Parse (orgparse_run)
@@ -607,18 +685,22 @@ void orgparse_run(orgparse *op,
                   void *ud)
 {
     orgparse_state state;
+    int pmode;
 
     state.op = op;
     state.txt = txt;
     state.sz = sz;
     state.pos = 0;
     state.mode = 0;
+    state.pmode = -1;
+    state.txtmode = 0;
     state.len = 0;
     state.ud = ud;
     state.blk = NULL;
 
     for (state.pos = 0; state.pos < sz; state.pos++) {
-        if (state.mode == 0) {
+        pmode = state.mode;
+        if (state.mode == 0 || state.mode == 3) {
             if (parse_comment(&state)) {
                 continue;
             }
@@ -631,6 +713,13 @@ void orgparse_run(orgparse *op,
             } else if (parse_title(&state)) {
                 continue;
             } else {
+                if (state.pmode != 3) {
+                    orgparse_pgrph_begin(state.op,
+                                         state.ud);
+                    state.newline = 0;
+                }
+                state.mode = 3;
+                pmode = 3;
                 parse_text(&state);
             }
         } else if (state.mode == 1) {
@@ -642,6 +731,7 @@ void orgparse_run(orgparse *op,
                 <<increment_aux_line>>
             }
         }
+        state.pmode = pmode;
     }
 }
 #+END_SRC
@@ -777,8 +867,13 @@ static int parse_text(orgparse_state *state)
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             if (n == mark) {
-                if (op->newline != NULL) {
-                    op->newline(ud, NULL, 0);
+                if (!state->newline) {
+                    orgparse_pgrph_end(op, ud);
+                    state->newline = 1;
+                } else {
+                    if (op->newline != NULL) {
+                        op->newline(ud, NULL, 0);
+                    }
                 }
             } else {
                 if (op->text != NULL) {
@@ -789,6 +884,9 @@ static int parse_text(orgparse_state *state)
                 }
             }
             break;
+        } else if (state->newline) {
+            state->newline = 0;
+            orgparse_pgrph_begin(op, ud);
         } else if (parse_aux_check(str, sz, &n)) {
             <<break_and_begin_aux_block>>
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
