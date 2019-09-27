@@ -11,6 +11,19 @@ This is a test program for orgparse.
 
 int main(int argc, char *argv[])
 {
-    return orgparse_test(argc, argv);
+    if (argc <= 1) {
+        fprintf(stderr, "Usage: %s [run|parse]\n", argv[0]);
+        return 1;
+    }
+    if (!strcmp(argv[1], "parse")) {
+        argv++;
+        argc--;
+        return orgparse_test_parser(argc, argv);
+    } else if (!strcmp(argv[1], "run")) {
+        return orgparse_test_suite();
+    } else {
+        fprintf(stderr, "unknown command '%s'\n", argv[1]);
+    }
+    return 1;
 }
 #+END_SRC
