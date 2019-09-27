@@ -468,6 +468,42 @@ static int test_text_before_blk(void)
     return rc;
 }
 #+END_SRC
+*** Invalid Paragraph Start
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Invalid Paragraph Start", test_invalid_pgrph},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static void ip_pgrph(void *ud, int mode)
+{
+    int *found;
+    found = ud;
+    *found = 1;
+}
+
+static int test_invalid_pgrph(void)
+{
+    orgparse op;
+    int rc;
+    int found;
+    const char *str = "*A\n*B\n";
+
+    found = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_pgrph(&op, ip_pgrph);
+    orgparse_run(&op, str, strlen(str), &found);
+
+    if (found) {
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
