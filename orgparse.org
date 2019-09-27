@@ -377,16 +377,95 @@ static int test_ending_auxblock(void)
 {
     orgparse op;
     int nl;
+    int rc;
 
     nl = 0;
     orgparse_init(&op);
     orgparse_set_newline(&op, ending_auxblock_newline);
     orgparse_run(&op, "@! some text !@\n\none.", 23, &nl);
+    rc = OK;
     if (nl != 1) {
         printf("%d newlines when it should have been 1\n",
                nl);
+        rc = FAIL;
     }
-    return FAIL;
+    return rc;
+}
+#+END_SRC
+*** Text Before Code Block
+Text before a block causes a code block to glitchy by one.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Text before codeblock", test_text_before_blk},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    const char *code;
+    size_t sz;
+    int found_codeblock;
+    int off_by_one;
+} tbb_d;
+
+static void tbb_codeblock(void *ud,
+                          const char *str,
+                          size_t sz)
+{
+    tbb_d *tbb;
+    tbb = ud;
+
+    tbb->code = str;
+    tbb->sz = sz;
+    tbb->found_codeblock = 1;
+}
+
+static void tbb_text(void *ud,
+                     const char *str,
+                     size_t sz)
+{
+    tbb_d *tbb;
+    tbb = ud;
+
+    if (str[0] == '+') {
+        tbb->off_by_one = 1;
+    }
+}
+
+static int test_text_before_blk(void)
+{
+    orgparse op;
+    tbb_d tbb;
+    const char *str =
+        "one.\n"
+        "#+NAME: block\n"
+        "#+BEGIN_SRC text\n"
+        "this is a codeblock.\n"
+        "#+END_SRC";
+    int rc;
+
+    tbb.sz = 0;
+    tbb.code = NULL;
+    tbb.found_codeblock = 0;
+    tbb.off_by_one = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_codeblock(&op, tbb_codeblock);
+    orgparse_set_text(&op, tbb_text);
+    orgparse_run(&op, str, strlen(str), &tbb);
+
+    if (!tbb.found_codeblock) {
+        printf("Codeblock not found\n");
+        rc = FAIL;
+    }
+
+    if (tbb.off_by_one) {
+        printf("Codeblock parser is off by one (+BEGIN)\n");
+        rc = FAIL;
+    }
+
+    return rc;
 }
 #+END_SRC
 * Main Interface
