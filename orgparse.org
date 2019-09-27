@@ -561,6 +561,29 @@ void orgparse_set_link(orgparse *op, orgparse_link f)
 }
 #+END_SRC
 * Parsing
+** Orgparse State Struct
+All mutable orgparse data is contained inside of a struct
+called =orgparse_state=, which gets instantiated with every
+call to =orgparse_run=. This allows =orgparse_run= to be
+re-entrant, which is a needed requirement in order for
+weewiki's scripting capabilities to really work.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct orgparse_state orgparse_state;
+#+END_SRC
+#+NAME: structs
+#+BEGIN_SRC c
+struct orgparse_state {
+    orgparse *op;
+    const char *txt;
+    size_t sz;
+    void *ud;
+    size_t pos;
+    int mode;
+    const char *blk;
+    size_t len;
+};
+#+END_SRC
 ** Top Level Parse (orgparse_run)
 Parsing is done using the function =orgparse_run=.
 All mutable variables are declared locally, so it should
@@ -583,36 +606,44 @@ void orgparse_run(orgparse *op,
                   size_t sz,
                   void *ud)
 {
-    size_t pos;
-    int mode;
     const char *blk;
-    size_t len;
+    orgparse_state state;
 
-    mode = 0;
-    len = 0;
-    for (pos = 0; pos < sz; pos++) {
-        if (mode == 0) {
-            if (parse_comment(txt, sz, &pos)) {
+    state.op = op;
+    state.txt = txt;
+    state.sz = sz;
+    state.pos = 0;
+    state.mode = 0;
+    state.len = 0;
+    state.ud = ud;
+    state.blk = NULL;
+
+    for (state.pos = 0; state.pos < sz; state.pos++) {
+        if (state.mode == 0) {
+            if (parse_comment(txt, sz, &state.pos)) {
                 continue;
             }
             if (parse_codeblock(op, txt, sz, ud,
-                                &pos, &mode, &blk, &len)) {
+                                &state.pos,
+                                &state.mode,
+                                &blk,
+                                &state.len)) {
                 continue;
-            } else if (parse_header(op, txt, sz, ud, &pos)) {
+            } else if (parse_header(&state)) {
                 continue;
-            } else if (parse_name(op, txt, sz, ud, &pos)) {
+            } else if (parse_name(op, txt, sz, ud, &state.pos)) {
                 continue;
-            } else if (parse_title(op, txt, sz, ud, &pos)) {
+            } else if (parse_title(op, txt, sz, ud, &state.pos)) {
                 continue;
             } else {
-                parse_text(op, txt, sz, ud, &pos,
-                           &mode, &blk, &len);
+                parse_text(op, txt, sz, ud, &state.pos,
+                           &state.mode, &blk, &state.len);
             }
-        } else if (mode == 1) {
+        } else if (state.mode == 1) {
             parse_codeblock(op, txt, sz, ud,
-                            &pos, &mode, &blk, &len);
-        } else if (mode == 2) {
-            if (parse_aux_doiend(txt, sz, pos)) {
+                            &state.pos, &state.mode, &blk, &state.len);
+        } else if (state.mode == 2) {
+            if (parse_aux_doiend(txt, sz, state.pos)) {
                 <<end_the_aux_block>>
             } else {
                 <<increment_aux_line>>
@@ -624,19 +655,11 @@ void orgparse_run(orgparse *op,
 ** Parse Header
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int parse_header(orgparse *op,
-                        const char *txt,
-                        size_t sz,
-                        void *ud,
-                        size_t *pos);
+static int parse_header(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static int parse_header(orgparse *op,
-                        const char *str,
-                        size_t sz,
-                        void *ud,
-                        size_t *pos)
+static int parse_header(orgparse_state *state)
 {
     const char *header;
     size_t n;
@@ -645,6 +668,18 @@ static int parse_header(orgparse *op,
     int lvl;
     size_t hsz;
     int rc;
+
+    orgparse *op;
+    const char *str;
+    size_t sz;
+    void *ud;
+    size_t *pos;
+
+    op = state->op;
+    str = state->txt;
+    sz = state->sz;
+    ud = state->ud;
+    pos = &state->pos;
 
     if(sz - *pos < 2) return 0;
     if (str[*pos] != '*') return 0;
@@ -1470,17 +1505,17 @@ static int parse_aux_doiend(const char *str,
 #+NAME: end_the_aux_block
 #+BEGIN_SRC c
 if (op->aux != NULL) {
-    op->aux(ud, blk, len - 1);
+    op->aux(ud, blk, state.len - 1);
 }
-mode = 0;
-pos++;
+state.mode = 0;
+state.pos++;
 #+END_SRC
 **** Adding to aux line
 While in aux block mode, the character block length is
 increased one character at a time.
 #+NAME: increment_aux_line
 #+BEGIN_SRC c
-len++;
+state.len++;
 #+END_SRC
 ** Parse Title
 Parses the =TITLE= commmand.
