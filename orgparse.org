@@ -272,6 +272,7 @@ orgparse_set_pgrph(op, test_pgrph);
 * Test Suite
 A test suite is used to ensure that things function the way
 they are supposed to.
+** Top
 #+NAME: funcdefs
 #+BEGIN_SRC c
 #ifdef ORGPARSE_TEST
@@ -280,10 +281,77 @@ int orgparse_test_suite(void);
 #+END_SRC
 #+NAME: test_program
 #+BEGIN_SRC c
+typedef struct {
+    const char *name;
+    int (*test)(void);
+} test_entry;
+
+enum {
+    OK,
+    FAIL,
+    IGNORE
+};
+
+<<tests>>
+
+test_entry Tests[] =
+{
+    <<test_entries>>
+};
+
 int orgparse_test_suite(void)
 {
-    fprintf(stderr, "Not yet implemented!\n");
-    return 1;
+    int n;
+    int ntests;
+    test_entry *e;
+    int rc;
+    int nerr;
+
+    ntests = sizeof(Tests)/sizeof(*Tests);
+    rc = 0;
+    nerr = 0;
+
+    for(n = 0; n < ntests; n++) {
+        e = &Tests[n];
+        printf("[%d/%d] %s: ", n + 1, ntests, e->name);
+        rc = e->test();
+        switch (rc) {
+            case OK:
+                printf("OK\n");
+                break;
+            case FAIL:
+                nerr++;
+                printf("FAIL\n");
+                break;
+            default:
+                printf("???\n");
+                break;
+        }
+    }
+
+    if (nerr) {
+        printf("\nTest suite failed with %d error(s)\n", nerr);
+        rc = 1;
+    } else {
+        printf("\nTest suite successful\n");
+        rc = 0;
+    }
+    return rc;
+}
+#+END_SRC
+** Tests
+*** Template Test
+Just to get things started. A boilerpalte test that
+returns "okay".
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Template Test", test_foo},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static int test_foo(void)
+{
+    return OK;
 }
 #+END_SRC
 * Main Interface
