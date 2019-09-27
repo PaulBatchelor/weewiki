@@ -685,8 +685,6 @@ void orgparse_run(orgparse *op,
                   void *ud)
 {
     orgparse_state state;
-    int pmode;
-
     state.op = op;
     state.txt = txt;
     state.sz = sz;
@@ -698,40 +696,54 @@ void orgparse_run(orgparse *op,
     state.ud = ud;
     state.blk = NULL;
 
-    for (state.pos = 0; state.pos < sz; state.pos++) {
-        pmode = state.mode;
-        if (state.mode == 0 || state.mode == 3) {
-            if (parse_comment(&state)) {
+    orgparse_state_run(&state);
+}
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_state_run(orgparse_state *state);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_state_run(orgparse_state *state)
+{
+    int txtmode;
+
+    for (state->pos = 0; state->pos < state->sz; state->pos++) {
+        txtmode = 0;
+        if (state->mode == 0 || state->mode == 3) {
+            if (parse_comment(state)) {
                 continue;
             }
-            if (parse_codeblock(&state)) {
+            if (parse_codeblock(state)) {
                 continue;
-            } else if (parse_header(&state)) {
+            } else if (parse_header(state)) {
                 continue;
-            } else if (parse_name(&state)) {
+            } else if (parse_name(state)) {
                 continue;
-            } else if (parse_title(&state)) {
+            } else if (parse_title(state)) {
                 continue;
             } else {
-                if (state.pmode != 3) {
-                    orgparse_pgrph_begin(state.op,
-                                         state.ud);
-                    state.newline = 0;
+                if (!state->txtmode) {
+                    orgparse_pgrph_begin(state->op,
+                                         state->ud);
+                    state->newline = 0;
                 }
-                state.mode = 3;
-                pmode = 3;
-                parse_text(&state);
+                txtmode = 1;
+                state->mode = 3;
+                parse_text(state);
             }
-        } else if (state.mode == 1) {
-            parse_codeblock(&state);
-        } else if (state.mode == 2) {
-            if (parse_aux_doiend(&state)) {
+        } else if (state->mode == 1) {
+            parse_codeblock(state);
+        } else if (state->mode == 2) {
+            if (state->txtmode) txtmode = 1;
+            if (parse_aux_doiend(state)) {
                 <<end_the_aux_block>>
             } else {
                 <<increment_aux_line>>
             }
         }
-        state.pmode = pmode;
+        state->txtmode = txtmode;
     }
 }
 #+END_SRC
@@ -793,6 +805,9 @@ static int parse_header(orgparse_state *state)
                     mode = 2;
                     *pos += n - start;
                     if (op->header != NULL) {
+                        if (state->txtmode) {
+                            orgparse_pgrph_end(op, ud);
+                        }
                         op->header(ud, header, hsz, lvl);
                     }
                     rc = 1;
@@ -883,6 +898,7 @@ static int parse_text(orgparse_state *state)
                             (n - mark) + 1);
                 }
             }
+            if (n == (sz - 2)) orgparse_pgrph_end(op, ud);
             break;
         } else if (state->newline) {
             state->newline = 0;
@@ -1608,18 +1624,18 @@ static int parse_aux_doiend(orgparse_state *state)
 **** Ending The Aux Block
 #+NAME: end_the_aux_block
 #+BEGIN_SRC c
-if (op->aux != NULL) {
-    op->aux(ud, state.blk, state.len - 1);
+if (state->op->aux != NULL) {
+    state->op->aux(state->ud, state->blk, state->len - 1);
 }
-state.mode = 0;
-state.pos++;
+state->mode = 0;
+state->pos++;
 #+END_SRC
 **** Adding to aux line
 While in aux block mode, the character block length is
 increased one character at a time.
 #+NAME: increment_aux_line
 #+BEGIN_SRC c
-state.len++;
+state->len++;
 #+END_SRC
 ** Parse Title
 Parses the =TITLE= commmand.
