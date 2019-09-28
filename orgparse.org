@@ -1393,11 +1393,11 @@ static int parse_text(orgparse_state *state)
                 }
             }
             break;
+        } else if (parse_aux_check(str, sz, &n)) {
+            <<break_and_begin_aux_block>>
         } else if (state->newline) {
             state->newline = 0;
             orgparse_pgrph_begin(op, ud);
-        } else if (parse_aux_check(str, sz, &n)) {
-            <<break_and_begin_aux_block>>
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
         } else if (parse_code(op, str, ud, sz, &n, &mark)) {
@@ -2091,7 +2091,6 @@ if (op->text != NULL && n != mark) {
 *mode = 2;
 *len = 0;
 *buf = &str[n + 2];
-
 rc = 0;
 break;
 #+END_SRC
