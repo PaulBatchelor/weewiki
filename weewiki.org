@@ -1277,6 +1277,21 @@ static void html_codeblock(void *ud,
                            const char *str,
                            size_t sz)
 {
+    weewiki_export_d *ex;
+    FILE *fp;
+    size_t n;
+    ex = ud;
+    fp = ex->fp;
+
+    fprintf(fp, "<pre><code>");
+    for (n = 0; n < sz; n++) {
+        switch (str[n]) {
+            default:
+                fputc(str[n], fp);
+                break;
+        }
+    }
+    fprintf(fp, "</pre></code>\n");
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
