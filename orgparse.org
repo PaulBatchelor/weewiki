@@ -677,6 +677,119 @@ static int test_mult_auxblocks(void)
     return rc;
 }
 #+END_SRC
+*** Start a new block within a block
+This problem happens with the following weewiki text.
+
+#+BEGIN_SRC text
+@!(org "foo")!@
+
+@!(org "bar")!@
+
+@!(org "cat")!@
+#+END_SRC
+
+This generates the following html:
+
+#+BEGIN_SRC html
+<p>foo</p>
+bar<br>
+cat</p>
+#+END_SRC
+
+When it should be more like:
+
+#+BEGIN_SRC html
+<p>foo</p>
+<p>bar</p>
+<p>car</p>
+#+END_SRC
+
+This test aims to reproduce the situations, and count
+the number of paragraph starts. It *should* be 3 starts,
+but it currently only returns 1.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Start block within a block", test_block_block},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int b;
+    int e;
+    int t;
+    orgparse_state s;
+} bb_d;
+
+static void bb_aux(void *ud, const char *buf, size_t sz)
+{
+    bb_d *bb;
+    bb = ud;
+
+    orgparse_run_txtmode(bb->s.op,
+                         buf, sz,
+                         bb,
+                         bb->s.txtmode);
+}
+
+static void bb_pgrph(void *ud, int mode)
+{
+    bb_d *bb;
+    bb = ud;
+    if (mode == 0) bb->b++;
+    else bb->e++;
+}
+
+static void bb_txt(void *ud, const char *buf, size_t sz)
+{
+    bb_d *bb;
+    bb = ud;
+    bb->t++;
+    printf("text: '");
+    fwrite(buf, 1, sz, stdout);
+    printf("'\n");
+}
+
+static int test_block_block(void)
+{
+    orgparse op;
+    int rc;
+    bb_d bb;
+    const char *str = "@!foo!@\n\n@!bar!@\n\n@!cat!@";
+
+    bb.b = 0;
+    bb.e = 0;
+    bb.t = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_aux(&op, bb_aux);
+    orgparse_set_pgrph(&op, bb_pgrph);
+    orgparse_set_text(&op, bb_txt);
+    orgparse_state_init(&bb.s, &op, str, strlen(str), &bb);
+    orgparse_state_run(&bb.s);
+
+    if (bb.b != 3) {
+        printf("Found %d paragraphs begins. ", bb.b);
+        printf("Expected 3.\n");
+        rc = FAIL;
+    }
+
+    if (bb.e != 3) {
+        printf("Found %d paragraphs ends. ", bb.e);
+        printf("Expected 3.\n");
+        rc = FAIL;
+    }
+
+    if (bb.t != 3) {
+        printf("Found %d textblocks. ", bb.t);
+        printf("Expected 3.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.

@@ -1348,10 +1348,15 @@ orgparse_set_link(op, html_link);
 #+BEGIN_SRC c
 static void html_pgrph(void *ud, int mode)
 {
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+
     if (mode) {
-        printf("</p>\n");
+        fprintf(fp, "</p>\n");
     } else {
-        printf("<p>");
+        fprintf(fp, "<p>");
     }
 }
 #+END_SRC
@@ -1545,6 +1550,18 @@ static void write_multiple_files(weewiki_d *ww,
 
 
     sqlite3_finalize(stmt);
+}
+#+END_SRC
+** Weewiki Export Text Mode
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_export_txtmode(weewiki_export_d *ex);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_export_txtmode(weewiki_export_d *ex)
+{
+    return ex->state.txtmode;
 }
 #+END_SRC
 * Janet

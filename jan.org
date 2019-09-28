@@ -73,7 +73,10 @@ static Janet cfun_org(int32_t argc, Janet *argv)
     ex = weewiki_ex(ww);
     txt = (const char *)janet_to_string(argv[0]);
     len = strlen(txt);
-    weewiki_export_run_txtmode(ex, txt, len, 1);
+    weewiki_export_run_txtmode(ex,
+                               txt,
+                               len,
+                               weewiki_export_txtmode(ex));
     return janet_wrap_nil();
 }
 #+END_SRC
