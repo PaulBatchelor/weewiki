@@ -529,6 +529,65 @@ static int test_invalid_pgrph(void)
     return rc;
 }
 #+END_SRC
+*** New paragraph block after header
+For some reason, a new paragraph block will not start in
+a second header. This test will make sure it passes.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"New Paragraph After Block Header", test_new_pgrph},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int found;
+    int headers;
+} np_d;
+
+static void np_pgrph(void *ud, int mode)
+{
+    np_d *np;
+    np = ud;
+    if (mode == 0) np->found++;
+}
+
+static void np_header(void *ud, const char *str, size_t sz, int lvl)
+{
+    np_d *np;
+    np = ud;
+    np->headers++;
+}
+
+static int test_new_pgrph(void)
+{
+    orgparse op;
+    int rc;
+    np_d np;
+    const char *str = "* A\n123\n* B\n456";
+
+    np.found = 0;
+    np.headers = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_pgrph(&op, np_pgrph);
+    orgparse_set_header(&op, np_header);
+    orgparse_run(&op, str, strlen(str), &np);
+
+    if (np.found != 2) {
+        printf("Found %d paragraph calls\n", np.found);
+        printf("Expected 2\n");
+        rc = FAIL;
+    }
+
+    if (np.headers != 2) {
+        printf("Found %d headers, expected 2\n",
+               np.headers);
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
