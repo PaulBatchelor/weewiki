@@ -575,7 +575,7 @@ static int test_new_pgrph(void)
     orgparse_run(&op, str, strlen(str), &np);
 
     if (np.found != 2) {
-        printf("Found %d paragraph calls\n", np.found);
+        printf("Found %d paragraph call(s)\n", np.found);
         printf("Expected 2\n");
         rc = FAIL;
     }
