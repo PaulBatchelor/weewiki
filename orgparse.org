@@ -469,36 +469,61 @@ static int test_text_before_blk(void)
 }
 #+END_SRC
 *** Invalid Paragraph Start
+This happens at the end of a file with any non-text thing
+(such as a header). While that bug has been fixed, a new
+bug has occured where a header does not get parsed if there
+is no newline. Trying to get to the bottom of that as well
+now.
 #+NAME: test_entries
 #+BEGIN_SRC c
 {"Invalid Paragraph Start", test_invalid_pgrph},
 #+END_SRC
 #+NAME: tests
 #+BEGIN_SRC c
+typedef struct {
+    int found;
+    int headers;
+} ip_d;
+
 static void ip_pgrph(void *ud, int mode)
 {
-    int *found;
-    found = ud;
-    *found = 1;
+    ip_d *ip;
+    ip = ud;
+    ip->found++;
+}
+
+static void ip_header(void *ud, const char *str, size_t sz, int lvl)
+{
+    ip_d *ip;
+    ip = ud;
+    ip->headers++;
 }
 
 static int test_invalid_pgrph(void)
 {
     orgparse op;
     int rc;
-    int found;
-    const char *str = "*A\n*B\n";
+    ip_d ip;
+    const char *str = "* A\n* B";
 
-    found = 0;
+    ip.found = 0;
+    ip.headers = 0;
 
     rc = OK;
 
     orgparse_init(&op);
     orgparse_set_pgrph(&op, ip_pgrph);
-    orgparse_run(&op, str, strlen(str), &found);
+    orgparse_set_header(&op, ip_header);
+    orgparse_run(&op, str, strlen(str), &ip);
 
-    if (found) {
+    if (ip.found) {
+        printf("Found %d paragraph calls\n", ip.found);
         rc = FAIL;
+    }
+
+    if (ip.headers != 2) {
+        printf("Found %d headers, expected 2\n",
+               ip.headers);
     }
 
     return rc;
@@ -960,9 +985,11 @@ void orgparse_state_run(orgparse_state *state)
                 continue;
             } else {
                 if (!state->txtmode) {
-                    orgparse_pgrph_begin(state->op,
-                                         state->ud);
-                    state->newline = 0;
+                    if (state->pos < (state->sz - 1)) {
+                        orgparse_pgrph_begin(state->op,
+                                            state->ud);
+                        state->newline = 0;
+                    }
                 }
                 txtmode = 1;
                 parse_text(state);
@@ -1029,6 +1056,16 @@ static int parse_header(orgparse_state *state)
                     header = &str[n];
                     hsz = 1;
                     mode = 1;
+                    rc = 1;
+                    if (n == (sz - 1)) {
+                        *pos += n - start;
+                        if (op->header != NULL) {
+                            if (state->txtmode) {
+                                orgparse_pgrph_end(op, ud);
+                            }
+                            op->header(ud, header, hsz, lvl);
+                        }
+                    }
                 } else {
                     mode = 2;
                     rc = 0;
