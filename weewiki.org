@@ -1135,6 +1135,7 @@ struct weewiki_export_d {
     FILE *fp;
     orgparse op;
     JanetTable *env;
+    orgparse_state state;
 };
 #+END_SRC
 ** Orgparse callback setup
@@ -1342,20 +1343,57 @@ static void html_link(void *ud,
 #+BEGIN_SRC c
 orgparse_set_link(op, html_link);
 #+END_SRC
+*** Paragraph
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_pgrph(void *ud, int mode)
+{
+    if (mode) {
+        printf("</p>\n");
+    } else {
+        printf("<p>");
+    }
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_pgrph(op, html_pgrph);
+#+END_SRC
 ** Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void weewiki_export_run(weewiki_export_d *ex,
-                        const char *buf,
-                        size_t sz);
+int weewiki_export_run(weewiki_export_d *ex,
+                       const char *buf,
+                       size_t sz);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void weewiki_export_run(weewiki_export_d *ex,
-                        const char *buf,
-                        size_t sz)
+int weewiki_export_run(weewiki_export_d *ex,
+                       const char *buf,
+                       size_t sz)
 {
-    orgparse_run(&ex->op, buf, sz, ex);
+    orgparse_state_init(&ex->state, &ex->op, buf, sz, ex);
+    return orgparse_state_run(&ex->state);
+}
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_export_run_txtmode(weewiki_export_d *ex,
+                               const char *buf,
+                               size_t sz,
+                               int txtmode);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_export_run_txtmode(weewiki_export_d *ex,
+                               const char *buf,
+                               size_t sz,
+                               int txtmode)
+{
+    return orgparse_run_txtmode(&ex->op,
+                                buf, sz,
+                                ex,
+                                txtmode);
 }
 #+END_SRC
 ** Write File
@@ -1372,12 +1410,14 @@ static void write_file(weewiki_export_d *ex,
                        const unsigned char *txt,
                        size_t txt_sz)
 {
+    int rc;
     janet_dostring(ex->env,
                    (const unsigned char *)"(html-header)",
                    NULL, NULL);
-    weewiki_export_run(ex,
-                        (const char *)txt,
-                        txt_sz);
+    rc = weewiki_export_run(ex,
+                            (const char *)txt,
+                            txt_sz);
+    orgparse_wrapup(&ex->op, ex, rc);
     janet_dostring(ex->env,
                    (const unsigned char *)"(html-footer)",
                    NULL, NULL);

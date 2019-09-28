@@ -1017,12 +1017,16 @@ void orgparse_wrapup(orgparse *op, void *ud, int rc)
 }
 #+END_SRC
 * Parsing
-** Orgparse State Struct
+** Orgparse State
+To make orgparse re-entrant, all mutable data is stored in
+a state.
+*** Orgparse Struct
 All mutable orgparse data is contained inside of a struct
 called =orgparse_state=, which gets instantiated with every
 call to =orgparse_run=. This allows =orgparse_run= to be
 re-entrant, which is a needed requirement in order for
 weewiki's scripting capabilities to really work.
+**** Declarations
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct orgparse_state orgparse_state;
@@ -1043,43 +1047,37 @@ struct orgparse_state {
     int newline;
 };
 #+END_SRC
-** Top Level Parse (orgparse_run)
-Parsing is done using the function =orgparse_run=.
-All mutable variables are declared locally, so it should
-be feasible to run nested calls to this function.
-
-=orgparse_run= expects a properly intialized + set instance
-of =orgparse=, a text block, the text block size, and any
-user data.
+**** Struct Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int orgparse_run(orgparse *op,
-                 const char *txt,
-                 size_t sz,
-                 void *ud);
+void orgparse_state_init(orgparse_state *state,
+                         orgparse *op,
+                         const char *txt,
+                         size_t sz,
+                         void *ud);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int orgparse_run(orgparse *op,
-                 const char *txt,
-                 size_t sz,
-                 void *ud)
+void orgparse_state_init(orgparse_state *state,
+                         orgparse *op,
+                         const char *txt,
+                         size_t sz,
+                         void *ud)
 {
-    orgparse_state state;
-    state.op = op;
-    state.txt = txt;
-    state.sz = sz;
-    state.pos = 0;
-    state.mode = 0;
-    state.pmode = -1;
-    state.txtmode = 0;
-    state.len = 0;
-    state.ud = ud;
-    state.blk = NULL;
-
-    return orgparse_state_run(&state);
+    state->op = op;
+    state->txt = txt;
+    state->sz = sz;
+    state->pos = 0;
+    state->mode = 0;
+    state->pmode = -1;
+    state->txtmode = 0;
+    state->len = 0;
+    state->ud = ud;
+    state->blk = NULL;
+    state->newline = 0;
 }
 #+END_SRC
+*** State Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int orgparse_state_run(orgparse_state *state);
@@ -1130,6 +1128,61 @@ int orgparse_state_run(orgparse_state *state)
         state->txtmode = txtmode;
     }
     return txtmode;
+}
+#+END_SRC
+** Top Level Parse (orgparse_run)
+Parsing is done using the function =orgparse_run=.
+All mutable variables are declared locally, so it should
+be feasible to run nested calls to this function.
+
+=orgparse_run= expects a properly intialized + set instance
+of =orgparse=, a text block, the text block size, and any
+user data.
+*** Normal
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int orgparse_run(orgparse *op,
+                 const char *txt,
+                 size_t sz,
+                 void *ud);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int orgparse_run(orgparse *op,
+                 const char *txt,
+                 size_t sz,
+                 void *ud)
+{
+    orgparse_state state;
+    orgparse_state_init(&state, op, txt, sz, ud);
+    return orgparse_state_run(&state);
+}
+#+END_SRC
+*** Text Mode
+By default, the =orgparse_run= function starts with textmode
+set to be false. However, this can cause problems with
+inline org generation via Janet. This function allows the
+textmode to be set before starting.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int orgparse_run_txtmode(orgparse *op,
+                         const char *txt,
+                         size_t sz,
+                         void *ud,
+                         int txtmode);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int orgparse_run_txtmode(orgparse *op,
+                         const char *txt,
+                         size_t sz,
+                         void *ud,
+                         int txtmode)
+{
+    orgparse_state state;
+    orgparse_state_init(&state, op, txt, sz, ud);
+    state.txtmode = txtmode;
+    return orgparse_state_run(&state);
 }
 #+END_SRC
 ** Parse Header
