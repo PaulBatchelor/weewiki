@@ -49,6 +49,7 @@ int orgparse_test_parser(int argc, char *argv[])
     FILE *fp;
     char *buf;
     size_t sz;
+    int rc;
     if (argc == 1) {
         fprintf(stderr, "Usage: %s file.org\n", argv[0]);
         return 1;
@@ -68,7 +69,8 @@ int orgparse_test_parser(int argc, char *argv[])
     fread(buf, 1, sz, fp);
     orgparse_init(&op);
     setup_orgparse(&op);
-    orgparse_run(&op, buf, sz, NULL);
+    rc = orgparse_run(&op, buf, sz, NULL);
+    orgparse_wrapup(&op, NULL, rc);
     free(buf);
     return 0;
 }
@@ -997,6 +999,23 @@ void orgparse_pgrph_end(orgparse *op, void *ud)
     }
 }
 #+END_SRC
+
+Paragraphs do not end at the end of a file. It will need to
+be ended with =orgparse_wrapup=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_wrapup(orgparse *op, void *ud, int rc);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_wrapup(orgparse *op, void *ud, int rc)
+{
+    if (rc) {
+        orgparse_pgrph_end(op, ud);
+    }
+}
+#+END_SRC
 * Parsing
 ** Orgparse State Struct
 All mutable orgparse data is contained inside of a struct
@@ -1034,17 +1053,17 @@ of =orgparse=, a text block, the text block size, and any
 user data.
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void orgparse_run(orgparse *op,
-                  const char *txt,
-                  size_t sz,
-                  void *ud);
+int orgparse_run(orgparse *op,
+                 const char *txt,
+                 size_t sz,
+                 void *ud);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void orgparse_run(orgparse *op,
-                  const char *txt,
-                  size_t sz,
-                  void *ud)
+int orgparse_run(orgparse *op,
+                 const char *txt,
+                 size_t sz,
+                 void *ud)
 {
     orgparse_state state;
     state.op = op;
@@ -1058,18 +1077,20 @@ void orgparse_run(orgparse *op,
     state.ud = ud;
     state.blk = NULL;
 
-    orgparse_state_run(&state);
+    return orgparse_state_run(&state);
 }
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void orgparse_state_run(orgparse_state *state);
+int orgparse_state_run(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void orgparse_state_run(orgparse_state *state)
+int orgparse_state_run(orgparse_state *state)
 {
     int txtmode;
+
+    txtmode = 0;
 
     for (state->pos = 0; state->pos < state->sz; state->pos++) {
         txtmode = 0;
@@ -1108,6 +1129,7 @@ void orgparse_state_run(orgparse_state *state)
         }
         state->txtmode = txtmode;
     }
+    return txtmode;
 }
 #+END_SRC
 ** Parse Header
