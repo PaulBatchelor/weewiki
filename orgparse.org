@@ -1864,6 +1864,18 @@ if (state->op->aux != NULL) {
 }
 state->mode = 0;
 state->pos++;
+<<handle_auxblock_endofline>>
+#+END_SRC
+An edge case to handle: what happens when an aux block is at
+the end of a line? When this happens, the parser absorbs the
+newline character. If this doesn't happen, the text parser
+adds an extra newline.
+#+NAME: handle_auxblock_endofline
+#+BEGIN_SRC c
+if ((state->pos + 1) < state->sz &&
+    state->txt[state->pos + 1] == '\n') {
+    state->pos++;
+}
 #+END_SRC
 **** Adding to aux line
 While in aux block mode, the character block length is
