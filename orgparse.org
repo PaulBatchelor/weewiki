@@ -946,7 +946,7 @@ void orgparse_state_run(orgparse_state *state)
 
     for (state->pos = 0; state->pos < state->sz; state->pos++) {
         txtmode = 0;
-        if (state->mode == 0 || state->mode == 3) {
+        if (state->mode == 0) {
             if (parse_comment(state)) {
                 continue;
             }
@@ -965,7 +965,6 @@ void orgparse_state_run(orgparse_state *state)
                     state->newline = 0;
                 }
                 txtmode = 1;
-                state->mode = 3;
                 parse_text(state);
             }
         } else if (state->mode == 1) {
