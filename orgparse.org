@@ -588,6 +588,49 @@ static int test_new_pgrph(void)
     return rc;
 }
 #+END_SRC
+*** Starting new paragraphs
+A new paragraph should happen when there is an empty line.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Starting new paragraphs", test_start_pgrph},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int n;
+} sp_d;
+
+static void sp_pgrph(void *ud, int mode)
+{
+    sp_d *sp;
+    sp = ud;
+    if (mode == 0) sp->n++;
+}
+
+static int test_start_pgrph(void)
+{
+    orgparse op;
+    int rc;
+    sp_d sp;
+    const char *str = "abc\ndef\nghi";
+
+    sp.n = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_pgrph(&op, sp_pgrph);
+    orgparse_run(&op, str, strlen(str), &sp);
+
+    if (sp.n != 3) {
+        printf("Found %d paragraph start(s). ", sp.n);
+        printf("Expected 3.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
