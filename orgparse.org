@@ -1121,6 +1121,7 @@ static int parse_header(orgparse_state *state)
                         if (op->header != NULL) {
                             if (state->txtmode) {
                                 orgparse_pgrph_end(op, ud);
+                                state->txtmode = 0;
                             }
                             op->header(ud, header, hsz, lvl);
                         }
@@ -1137,6 +1138,7 @@ static int parse_header(orgparse_state *state)
                     if (op->header != NULL) {
                         if (state->txtmode) {
                             orgparse_pgrph_end(op, ud);
+                            state->txtmode = 0;
                         }
                         op->header(ud, header, hsz, lvl);
                     }
