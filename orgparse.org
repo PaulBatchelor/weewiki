@@ -633,6 +633,50 @@ static int test_start_pgrph(void)
     return rc;
 }
 #+END_SRC
+*** Multiple Aux Blocks.
+Two aux blocks, separated by an empty line, currently
+causes the second auxblock to be parsed as text.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Multiple Aux Blocks", test_mult_auxblocks},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int na;
+} ma_d;
+
+static void na_aux(void *ud, const char *buf, size_t sz)
+{
+    ma_d *ma;
+    ma = ud;
+    ma->na++;
+}
+
+static int test_mult_auxblocks(void)
+{
+    orgparse op;
+    int rc;
+    ma_d ma;
+    const char *str = "@!foo!@\n\n@!bar!@";
+
+    ma.na = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_aux(&op, na_aux);
+    orgparse_run(&op, str, strlen(str), &ma);
+
+    if (ma.na != 2) {
+        printf("Found %d aux blocks. ", ma.na);
+        printf("Expected 2.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
