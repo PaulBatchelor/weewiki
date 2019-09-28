@@ -384,8 +384,8 @@ static int test_ending_auxblock(void)
     orgparse_set_newline(&op, ending_auxblock_newline);
     orgparse_run(&op, "@! some text !@\n\none.", 23, &nl);
     rc = OK;
-    if (nl != 1) {
-        printf("%d newlines when it should have been 1\n",
+    if (nl != 0) {
+        printf("%d newlines when it should have been 0\n",
                nl);
         rc = FAIL;
     }
@@ -612,7 +612,7 @@ static int test_start_pgrph(void)
     orgparse op;
     int rc;
     sp_d sp;
-    const char *str = "abc\ndef\nghi";
+    const char *str = "abc\n\ndef\n\nghi";
 
     sp.n = 0;
 
@@ -1257,15 +1257,13 @@ static int parse_text(orgparse_state *state)
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             if (n == mark) {
-                /* if (!state->newline) { */
-                /*     orgparse_pgrph_end(op, ud); */
-                /*     state->newline = 1; */
-                /* } else { */
-                /*     if (op->newline != NULL) { */
-                /*         op->newline(ud, NULL, 0); */
-                /*     } */
-                if (op->newline != NULL) {
-                    op->newline(ud, NULL, 0);
+                if (!state->newline) {
+                    orgparse_pgrph_end(op, ud);
+                    state->newline = 1;
+                } else {
+                    if (op->newline != NULL) {
+                        op->newline(ud, NULL, 0);
+                    }
                 }
             } else {
                 if (op->text != NULL) {
@@ -1276,9 +1274,9 @@ static int parse_text(orgparse_state *state)
                 }
             }
             break;
-        /* } else if (state->newline) { */
-        /*     state->newline = 0; */
-        /*     orgparse_pgrph_begin(op, ud); */
+        } else if (state->newline) {
+            state->newline = 0;
+            orgparse_pgrph_begin(op, ud);
         } else if (parse_aux_check(str, sz, &n)) {
             <<break_and_begin_aux_block>>
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
