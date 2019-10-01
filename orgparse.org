@@ -744,7 +744,6 @@ static void bb_txt(void *ud, const char *buf, size_t sz)
     bb_d *bb;
     bb = ud;
     bb->t++;
-    fwrite(buf, 1, sz, stdout);
 }
 
 static int test_block_block(void)
