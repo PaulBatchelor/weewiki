@@ -790,6 +790,55 @@ static int test_block_block(void)
     return rc;
 }
 #+END_SRC
+*** Wrap-up always has end paragraph
+Things always end up in text mode, regardless of mode.
+This causes an end paragraph callback to happen.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Invalid end paragraph at wrapup", test_ep_at_wrapup},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int e;
+    int b;
+} epwu_d;
+
+static void epwu_pgrph(void *ud, int mode)
+{
+    epwu_d *epwu;
+    epwu = ud;
+    if (mode == 0) epwu->b++;
+    else epwu->e++;
+}
+
+static int test_ep_at_wrapup(void)
+{
+    orgparse op;
+    int rc;
+    epwu_d epwu;
+    const char *str = "*Header\n";
+    int out;
+
+    epwu.b = 0;
+    epwu.e = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+    orgparse_set_pgrph(&op, epwu_pgrph);
+    out = orgparse_run(&op, str, strlen(str), &epwu);
+    orgparse_wrapup(&op, &epwu, out);
+
+    if (epwu.e != 0) {
+        printf("Found %d paragraphs ends. ", epwu.e);
+        printf("Expected no paragraph ends.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -1169,6 +1218,7 @@ void orgparse_wrapup(orgparse *op, void *ud, int rc);
 void orgparse_wrapup(orgparse *op, void *ud, int rc)
 {
     if (rc) {
+        printf("wrapping up.\n");
         orgparse_pgrph_end(op, ud);
     }
 }
