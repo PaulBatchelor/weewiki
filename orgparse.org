@@ -817,7 +817,7 @@ static int test_ep_at_wrapup(void)
     orgparse op;
     int rc;
     epwu_d epwu;
-    const char *str = "*Header\n";
+    const char *str = "* Header\n";
     int out;
 
     epwu.b = 0;
@@ -1218,7 +1218,6 @@ void orgparse_wrapup(orgparse *op, void *ud, int rc);
 void orgparse_wrapup(orgparse *op, void *ud, int rc)
 {
     if (rc) {
-        printf("wrapping up.\n");
         orgparse_pgrph_end(op, ud);
     }
 }
@@ -1294,10 +1293,17 @@ int orgparse_state_run(orgparse_state *state);
 int orgparse_state_run(orgparse_state *state)
 {
     int txtmode;
+    size_t sz;
 
     txtmode = 0;
 
-    for (state->pos = 0; state->pos < state->sz; state->pos++) {
+    sz = state->sz;
+
+    if (state->txt[sz - 1] == '\0') {
+        sz--;
+    }
+
+    for (state->pos = 0; state->pos < sz; state->pos++) {
         txtmode = 0;
         if (state->mode == 0) {
             if (parse_comment(state)) {
