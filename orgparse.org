@@ -1339,7 +1339,6 @@ struct orgparse_state {
     void *ud;
     size_t pos;
     int mode;
-    int pmode;
     int txtmode;
     const char *blk;
     size_t len;
@@ -1368,7 +1367,6 @@ void orgparse_state_init(orgparse_state *state,
     state->sz = sz;
     state->pos = 0;
     state->mode = 0;
-    state->pmode = -1;
     state->txtmode = 0;
     state->len = 0;
     state->ud = ud;
