@@ -1576,7 +1576,7 @@ int weewiki_export_txtmode(weewiki_export_d *ex);
 #+BEGIN_SRC c
 int weewiki_export_txtmode(weewiki_export_d *ex)
 {
-    return ex->state.txtmode;
+    return ex->state.flags.txtmode;
 }
 #+END_SRC
 * Janet

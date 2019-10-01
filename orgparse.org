@@ -728,7 +728,7 @@ static void bb_aux(void *ud, const char *buf, size_t sz)
     orgparse_run_txtmode(bb->s.op,
                          buf, sz,
                          bb,
-                         bb->s.txtmode);
+                         bb->s.flags.txtmode);
 }
 
 static void bb_pgrph(void *ud, int mode)
@@ -919,7 +919,7 @@ static int test_continuations(void)
                                blk2,
                                strlen(blk2),
                                &cont,
-                               cont.s.txtmode);
+                               cont.s.flags.txtmode);
 
     orgparse_wrapup(&op, &cont, out);
 
@@ -1332,16 +1332,27 @@ typedef struct orgparse_state orgparse_state;
 #+END_SRC
 #+NAME: structs
 #+BEGIN_SRC c
+<<orgparse_flags_struct>>
 struct orgparse_state {
     orgparse *op;
     const char *txt;
     size_t sz;
     void *ud;
     size_t pos;
-    int mode;
-    int txtmode;
     const char *blk;
     size_t len;
+    orgparse_state_flags flags;
+};
+#+END_SRC
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct orgparse_state_flags orgparse_state_flags;
+#+END_SRC
+#+NAME: orgparse_flags_struct
+#+BEGIN_SRC c
+struct orgparse_state_flags {
+    int mode;
+    int txtmode;
     int newline;
 };
 #+END_SRC
@@ -1366,12 +1377,12 @@ void orgparse_state_init(orgparse_state *state,
     state->txt = txt;
     state->sz = sz;
     state->pos = 0;
-    state->mode = 0;
-    state->txtmode = 0;
+    state->flags.mode = 0;
+    state->flags.txtmode = 0;
     state->len = 0;
     state->ud = ud;
     state->blk = NULL;
-    state->newline = 0;
+    state->flags.newline = 0;
 }
 #+END_SRC
 *** State Run
@@ -1396,7 +1407,7 @@ int orgparse_state_run(orgparse_state *state)
 
     for (state->pos = 0; state->pos < sz; state->pos++) {
         txtmode = 0;
-        if (state->mode == 0) {
+        if (state->flags.mode == 0) {
             if (parse_comment(state)) {
                 continue;
             }
@@ -1409,27 +1420,27 @@ int orgparse_state_run(orgparse_state *state)
             } else if (parse_title(state)) {
                 continue;
             } else {
-                if (!state->txtmode) {
+                if (!state->flags.txtmode) {
                     if (state->pos < (state->sz - 1)) {
                         orgparse_pgrph_begin(state->op,
                                             state->ud);
-                        state->newline = 0;
+                        state->flags.newline = 0;
                     }
                 }
                 txtmode = 1;
                 parse_text(state);
             }
-        } else if (state->mode == 1) {
+        } else if (state->flags.mode == 1) {
             parse_codeblock(state);
-        } else if (state->mode == 2) {
-            if (state->txtmode) txtmode = 1;
+        } else if (state->flags.mode == 2) {
+            if (state->flags.txtmode) txtmode = 1;
             if (parse_aux_doiend(state)) {
                 <<end_the_aux_block>>
             } else {
                 <<increment_aux_line>>
             }
         }
-        state->txtmode = txtmode;
+        state->flags.txtmode = txtmode;
     }
     return txtmode;
 }
@@ -1485,7 +1496,7 @@ int orgparse_run_txtmode(orgparse *op,
 {
     orgparse_state state;
     orgparse_state_init(&state, op, txt, sz, ud);
-    state.txtmode = txtmode;
+    state.flags.txtmode = txtmode;
     return orgparse_state_run(&state);
 }
 #+END_SRC
@@ -1541,9 +1552,9 @@ static int parse_header(orgparse_state *state)
                     if (n == (sz - 1)) {
                         *pos += n - start;
                         if (op->header != NULL) {
-                            if (state->txtmode) {
+                            if (state->flags.txtmode) {
                                 orgparse_pgrph_end(op, ud);
-                                state->txtmode = 0;
+                                state->flags.txtmode = 0;
                             }
                             op->header(ud, header, hsz, lvl);
                         }
@@ -1558,9 +1569,9 @@ static int parse_header(orgparse_state *state)
                     mode = 2;
                     *pos += n - start;
                     if (op->header != NULL) {
-                        if (state->txtmode) {
+                        if (state->flags.txtmode) {
                             orgparse_pgrph_end(op, ud);
-                            state->txtmode = 0;
+                            state->flags.txtmode = 0;
                         }
                         op->header(ud, header, hsz, lvl);
                     }
@@ -1621,7 +1632,7 @@ static int parse_text(orgparse_state *state)
     sz = state->sz;
     ud = state->ud;
     pos = &state->pos;
-    mode = &state->mode;
+    mode = &state->flags.mode;
     buf = &state->blk;
     len = &state->len;
 
@@ -1636,9 +1647,9 @@ static int parse_text(orgparse_state *state)
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             if (n == mark) {
-                if (!state->newline) {
+                if (!state->flags.newline) {
                     orgparse_pgrph_end(op, ud);
-                    state->newline = 1;
+                    state->flags.newline = 1;
                 } else {
                     if (op->newline != NULL) {
                         op->newline(ud, NULL, 0);
@@ -1655,8 +1666,8 @@ static int parse_text(orgparse_state *state)
             break;
         } else if (parse_aux_check(str, sz, &n)) {
             <<break_and_begin_aux_block>>
-        } else if (state->newline) {
-            state->newline = 0;
+        } else if (state->flags.newline) {
+            state->flags.newline = 0;
             orgparse_pgrph_begin(op, ud);
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
@@ -2184,7 +2195,7 @@ static int parse_codeblock(orgparse_state *state)
     sz = state->sz;
     ud = state->ud;
     pos = &state->pos;
-    mode = &state->mode;
+    mode = &state->flags.mode;
     blk = &state->blk;
     blklen = &state->len;
 
@@ -2348,8 +2359,8 @@ if (op->text != NULL && n != mark) {
     op->text(ud, &str[mark], n - mark);
 }
 
-if (state->newline) {
-    state->newline = 0;
+if (state->flags.newline) {
+    state->flags.newline = 0;
     orgparse_pgrph_begin(op, ud);
 }
 
@@ -2384,7 +2395,7 @@ static int parse_aux_doiend(orgparse_state *state)
 if (state->op->aux != NULL) {
     state->op->aux(state->ud, state->blk, state->len - 1);
 }
-state->mode = 0;
+state->flags.mode = 0;
 state->pos++;
 <<handle_auxblock_endofline>>
 #+END_SRC
