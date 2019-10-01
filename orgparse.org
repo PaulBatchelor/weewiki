@@ -744,9 +744,7 @@ static void bb_txt(void *ud, const char *buf, size_t sz)
     bb_d *bb;
     bb = ud;
     bb->t++;
-    printf("text: '");
     fwrite(buf, 1, sz, stdout);
-    printf("'\n");
 }
 
 static int test_block_block(void)
@@ -754,6 +752,7 @@ static int test_block_block(void)
     orgparse op;
     int rc;
     bb_d bb;
+    int out;
     const char *str = "@!foo!@\n\n@!bar!@\n\n@!cat!@";
 
     bb.b = 0;
@@ -767,7 +766,8 @@ static int test_block_block(void)
     orgparse_set_pgrph(&op, bb_pgrph);
     orgparse_set_text(&op, bb_txt);
     orgparse_state_init(&bb.s, &op, str, strlen(str), &bb);
-    orgparse_state_run(&bb.s);
+    out = orgparse_state_run(&bb.s);
+    orgparse_wrapup(&op, &bb, out);
 
     if (bb.b != 3) {
         printf("Found %d paragraphs begins. ", bb.b);
@@ -2255,6 +2255,11 @@ The code below is done inside of the =parse_text= function.
 #+BEGIN_SRC c
 if (op->text != NULL && n != mark) {
     op->text(ud, &str[mark], n - mark);
+}
+
+if (state->newline) {
+    state->newline = 0;
+    orgparse_pgrph_begin(op, ud);
 }
 
 *mode = 2;
