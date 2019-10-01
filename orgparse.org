@@ -838,6 +838,100 @@ static int test_ep_at_wrapup(void)
     return rc;
 }
 #+END_SRC
+*** Parsing Continuations
+Parsing continuations refer to being able save state
+information between multiple parse calls, to the point
+where functionally, it is all one continuous parse call.
+
+At the time of writing, this sort of functionality does not
+exactly exist, but it is needed if Janet is to parse org
+blocks.
+
+Right now, the following code will make two paragraphs out
+of the words "foo" and "bar", because of the extra line
+break.
+
+#+BEGIN_SRC text
+foo
+
+bar
+#+END_SRC
+
+This should do the same thing in weewiki markup + Janet,
+but right now it doesn't. I think it is because state is not
+being saved. Only one paragraph block is being registered.
+
+#+BEGIN_SRC text
+@!
+(org "foo\n\n")
+(org "bar\n")
+!@
+#+END_SRC
+
+This test will simulate what is happening in the Janet code,
+and count the paragraph starts/ends.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Parsing Continuations", test_continuations},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int b;
+    int e;
+    orgparse_state s;
+} cont_d;
+
+static void cont_pgrph(void *ud, int mode)
+{
+    cont_d *cont;
+    cont = ud;
+    if (mode == 0) cont->b++;
+    else cont->e++;
+}
+
+static int test_continuations(void)
+{
+    orgparse op;
+    int rc;
+    cont_d cont;
+    int out;
+    const char *blk1 = "foo\n\n";
+    const char *blk2 = "bar\n";
+
+    cont.b = 0;
+    cont.e = 0;
+
+    rc = OK;
+
+    orgparse_init(&op);
+
+    orgparse_set_pgrph(&op, cont_pgrph);
+
+    /* parse first block */
+
+    orgparse_state_init(&cont.s, &op, blk1, strlen(blk1), &cont);
+    orgparse_state_run(&cont.s);
+
+    /* parse second block */
+
+    out = orgparse_run_txtmode(&op,
+                               blk2,
+                               strlen(blk2),
+                               &cont,
+                               cont.s.txtmode);
+
+    orgparse_wrapup(&op, &cont, out);
+
+    if (cont.b != 2) {
+        printf("Found %d paragraphs begins. ", cont.b);
+        printf("Expected 2.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
