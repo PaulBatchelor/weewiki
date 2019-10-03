@@ -932,6 +932,57 @@ static int test_continuations(void)
     return rc;
 }
 #+END_SRC
+*** Parse formatted text after newline
+It seems my newline logic has added a new bug.
+So that's fun. Currently, any new paragraph that starts
+with formatted text or a link will get treated as plaintext.
+
+This test will isolate the incident and try to do bold
+text on a newline. If no bold text is to be found, it is
+a bug.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Parse formatted text after newline", test_formnl},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int b;
+} formnl_d;
+
+static void formnl_bold(void *ud, const char *s, size_t sz)
+{
+    formnl_d *f;
+    f = ud;
+    f->b++;
+}
+
+static int test_formnl(void)
+{
+    orgparse op;
+    formnl_d f;
+    int rc;
+    const char *txt = "text.\n\n*bold* text\n";
+
+    rc = OK;
+    orgparse_init(&op);
+    f.b = 0;
+
+    orgparse_set_bold(&op, formnl_bold);
+
+    orgparse_run(&op, txt, strlen(txt), &f);
+
+    if (f.b == 0) {
+        printf("No bolds found\n");
+        rc = FAIL;
+    } else if (f.b != 1) {
+        printf("Got %d bolds, expected only 1\n", f.b);
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
