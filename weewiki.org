@@ -839,6 +839,14 @@ static int p_link(int argc, char *argv[])
     sqlite3_stmt *stmt;
     int rc;
     struct stat st;
+    int force;
+
+    force = 0;
+    if (!strcmp(argv[1], "-f")) {
+        force = 1;
+        argv++;
+        argc--;
+    }
 
     if (argc < 3) {
         fprintf(stderr,
@@ -847,15 +855,22 @@ static int p_link(int argc, char *argv[])
         return 1;
     }
 
-    if (access(argv[2], F_OK) != -1) {
-        fprintf(stderr, "%s: file exists.\n", argv[2]);
-        return 1;
+
+    if (!force) {
+        if (access(argv[2], F_OK) != -1) {
+            fprintf(stderr, "%s: file exists.\n", argv[2]);
+            return 1;
+        }
     }
 
     weewiki_init(&ww);
     weewiki_open(&ww, "a.db");
 
-    rc = weewiki_pull(&ww, argv[1], argv[2]);
+    if (force) {
+        rc = weewiki_push(&ww, argv[2], argv[1]);
+    } else {
+        rc = weewiki_pull(&ww, argv[1], argv[2]);
+    }
 
     db = ww.db;
 
