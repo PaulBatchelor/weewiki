@@ -2470,7 +2470,6 @@ if (op->text != NULL && n != mark) {
 }
 
 if (state->flags->newline) {
-    printf("aux block break newline 0\n");
     state->flags->newline = 0;
     orgparse_pgrph_begin(op, ud);
 }
@@ -2503,11 +2502,11 @@ static int parse_aux_doiend(orgparse_state *state)
 **** Ending The Aux Block
 #+NAME: end_the_aux_block
 #+BEGIN_SRC c
+state->flags->mode = 0;
+state->pos++;
 if (state->op->aux != NULL) {
     state->op->aux(state->ud, state->blk, state->len - 1);
 }
-state->flags->mode = 0;
-state->pos++;
 <<handle_auxblock_endofline>>
 #+END_SRC
 An edge case to handle: what happens when an aux block is at

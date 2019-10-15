@@ -1447,12 +1447,10 @@ int weewiki_export_continue(weewiki_export_d *ex,
 {
     orgparse_state_flags *f;
     orgparse_state state;
-    f = orgparse_state_flags_get(&ex->state);
     orgparse_state_init(&state, &ex->op, buf, sz, ex);
-    if (f != NULL) {
-        orgparse_state_flags_set(&state, f);
-    }
-    return orgparse_state_run(&ex->state);
+    f = orgparse_state_flags_get(&ex->state);
+    orgparse_state_flags_set(&state, f);
+    return orgparse_state_run(&state);
 }
 #+END_SRC
 ** Write File
