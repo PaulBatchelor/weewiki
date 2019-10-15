@@ -879,7 +879,8 @@ and count the paragraph starts/ends.
 typedef struct {
     int b;
     int e;
-    orgparse_state s;
+    orgparse_state s1;
+    orgparse_state s2;
 } cont_d;
 
 static void cont_pgrph(void *ud, int mode)
@@ -896,6 +897,7 @@ static int test_continuations(void)
     int rc;
     cont_d cont;
     int out;
+    orgparse_state_flags *f;
     const char *blk1 = "foo\n\n";
     const char *blk2 = "bar\n";
 
@@ -910,16 +912,22 @@ static int test_continuations(void)
 
     /* parse first block */
 
-    orgparse_state_init(&cont.s, &op, blk1, strlen(blk1), &cont);
-    orgparse_state_run(&cont.s);
+    orgparse_state_init(&cont.s1, &op, blk1, strlen(blk1), &cont);
+    orgparse_state_run(&cont.s1);
 
     /* parse second block */
+    orgparse_state_init(&cont.s2, &op, blk2, strlen(blk2), &cont);
 
-    out = orgparse_run_txtmode(&op,
-                               blk2,
-                               strlen(blk2),
-                               &cont,
-                               cont.s.flags->txtmode);
+    f = orgparse_state_flags_get(&cont.s1);
+
+    if (f->newline == 0) {
+        printf("Expected newline flag to be toggled on\n");
+        rc = FAIL;
+    }
+
+    orgparse_state_flags_set(&cont.s2, f);
+    out = orgparse_state_run(&cont.s2);
+
 
     orgparse_wrapup(&op, &cont, out);
 
@@ -1376,7 +1384,7 @@ called =orgparse_state=, which gets instantiated with every
 call to =orgparse_run=. This allows =orgparse_run= to be
 re-entrant, which is a needed requirement in order for
 weewiki's scripting capabilities to really work.
-**** Declarations
+**** Struct Declarations
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct orgparse_state orgparse_state;
@@ -1392,14 +1400,29 @@ struct orgparse_state {
     size_t pos;
     const char *blk;
     size_t len;
-    orgparse_state_flags *flags;
-    orgparse_state_flags iflags;
+    <<state_flags_in_struct>>
 };
 #+END_SRC
+**** Flags Struct
+The flags struct is a component of the =orgparse_state=.
+These flags are used to determine position the parser
+state machine.
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct orgparse_state_flags orgparse_state_flags;
 #+END_SRC
+***** The Flags
+The =mode= flag is used to determine the large scale parsing
+mode, and is used to do general org-mode parsing or aux
+block parsing.
+
+The =txtmode= flag is boolean value set every time the
+parser goes to parse a text block. It is used to help
+indicate when a new paragraph block should begin.
+
+The =newline= flag is used to determine whether or not
+a =newline= character has been found. This is used to
+add explicit breaks, as well as start new paragraph blocks.
 #+NAME: orgparse_flags_struct
 #+BEGIN_SRC c
 struct orgparse_state_flags {
@@ -1407,6 +1430,40 @@ struct orgparse_state_flags {
     int txtmode;
     int newline;
 };
+#+END_SRC
+***** Flags in orgparse state
+The =orgparse_state= struct has two =orgparse_state_flags=
+variables: an internal flags value =iflags=, and a pointer
+value =flags=. By default, =flags= points to the internal
+value, but this can be overridden to be an external value.
+The reasoning for having this feature is to allow more
+seamless org code parsing generation in the Janet scriping
+engine via the =org= command.
+#+NAME: state_flags_in_struct
+#+BEGIN_SRC c
+orgparse_state_flags *flags;
+orgparse_state_flags iflags;
+#+END_SRC
+To override flags, use the =orgparse_state_flags_set=
+function. To get the internal flags, use
+=orgparse_state_flags_get=.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+orgparse_state_flags *orgparse_state_flags_get(orgparse_state *s);
+void orgparse_state_flags_set(orgparse_state *s,
+                              orgparse_state_flags *f);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+orgparse_state_flags *orgparse_state_flags_get(orgparse_state *s)
+{
+    return s->flags;
+}
+void orgparse_state_flags_set(orgparse_state *s,
+                              orgparse_state_flags *f)
+{
+    s->flags = f;
+}
 #+END_SRC
 **** Struct Init
 #+NAME: funcdefs
@@ -1526,7 +1583,7 @@ int orgparse_run(orgparse *op,
     return orgparse_state_run(&state);
 }
 #+END_SRC
-*** Text Mode
+*** Text Mode (Please deprecate)
 By default, the =orgparse_run= function starts with textmode
 set to be false. However, this can cause problems with
 inline org generation via Janet. This function allows the
@@ -1694,7 +1751,7 @@ static int parse_text(orgparse_state *state)
     mark = start;
 
     /* check for end of file */
-    if (start == (sz - 1)) return 0;
+    if (start == sz) return 0;
 
     for (n = start; n < sz; n++) {
         if (str[n] == '\n' || n == (sz - 1)) {
@@ -2413,6 +2470,7 @@ if (op->text != NULL && n != mark) {
 }
 
 if (state->flags->newline) {
+    printf("aux block break newline 0\n");
     state->flags->newline = 0;
     orgparse_pgrph_begin(op, ud);
 }
