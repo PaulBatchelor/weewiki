@@ -991,6 +991,75 @@ static int test_formnl(void)
     return rc;
 }
 #+END_SRC
+*** Rogue Paragraph
+This happens anytime there is a line break at the end of
+a file, like so:
+
+#+BEGIN_SRC text
+Text.
+
+#+END_SRC
+
+Running =orgparse_test run= on this will produce the
+following:
+
+#+BEGIN_SRC text
+PARAGRAPH BEGIN
+text: 'Text.
+'
+PARAGRAPH END
+PARAGRAPH END
+#+END_SRC
+
+I am guessing this has to do with the =orgparse_wrapup=
+logic.
+
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Rogue Paragraph End", test_rp},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int e;
+} rp_d;
+
+static void rp_pgrph(void *ud, int mode)
+{
+    rp_d *rp;
+    rp = ud;
+    if(mode) rp->e++;
+}
+
+static int test_rp(void)
+{
+    orgparse op;
+    rp_d rp;
+    int rc;
+    int out;
+    const char *txt = "text.\n\n";
+
+    rc = OK;
+    orgparse_init(&op);
+    rp.e = 0;
+
+    orgparse_set_pgrph(&op, rp_pgrph);
+
+    out = orgparse_run(&op, txt, strlen(txt), &rp);
+    orgparse_wrapup(&op, &rp, out);
+
+    if (rp.e != 1) {
+        printf("Wrong number of end paragraphs\n");
+        printf("Expected 1, got %d\n", rp.e);
+        if (rp.e == 2) {
+            printf("Suspected rogue paragraph detected\n");
+        }
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
