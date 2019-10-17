@@ -1784,6 +1784,7 @@ text.
 The text block parser will read lines until it hits stuff
 that is non-text. Along the way, the text will check for
 formatting tags and links on a line by line basis.
+**** Main Callback
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int parse_text(orgparse_state *state);
@@ -1826,14 +1827,7 @@ static int parse_text(orgparse_state *state)
         if (str[n] == '\n' || n == (sz - 1)) {
             rc = 1;
             if (n == mark) {
-                if (!state->flags->newline) {
-                    orgparse_pgrph_end(op, ud);
-                    state->flags->newline = 1;
-                } else {
-                    if (op->newline != NULL) {
-                        op->newline(ud, NULL, 0);
-                    }
-                }
+                <<handle_newline_logic>>
             } else {
                 if (op->text != NULL) {
                     /* +1 includes line break*/
@@ -1846,8 +1840,7 @@ static int parse_text(orgparse_state *state)
         } else if (parse_aux_check(str, sz, &n)) {
             <<break_and_begin_aux_block>>
         } else if (state->flags->newline) {
-            state->flags->newline = 0;
-            orgparse_pgrph_begin(op, ud);
+            <<newline_begin_paragraph>>
         } else if (parse_bold(op, str, ud, sz, &n, &mark)) {
             continue;
         } else if (parse_code(op, str, ud, sz, &n, &mark)) {
@@ -1861,6 +1854,50 @@ static int parse_text(orgparse_state *state)
     *pos += (n - start);
     return rc;
 }
+#+END_SRC
+**** Handling Newline Logic
+In org mode, line break characters "\n" can trigger
+different behaviors. This is managed via the =newline= flag.
+
+The newline at the end of some text is used to indicate the
+end of a line. The text parser reads things a line at a
+time, so at that point it is an indicator to break out of
+text parser routine.
+
+Newline behavior changes when the character is found without
+any other characters. The first newline is considered to
+mark the end of a paragraph block. Subsequent newlines are
+registered as line breaks.
+
+#+NAME: handle_newline_logic
+#+BEGIN_SRC c
+if (!state->flags->newline) {
+    orgparse_pgrph_end(op, ud);
+    state->flags->newline = 1;
+} else {
+    if (op->newline != NULL) {
+        op->newline(ud, NULL, 0);
+    }
+}
+#+END_SRC
+
+Text that begins after a single empty line break is
+considered to be a new paragraph. This is determined
+by checking to see if the newline flag has been set.
+
+A bug was discovered where the parser skips the first
+character of the paragraph. This bug becomes noticeable
+when any kind of formatting is used at the beginning of
+a paragraph (such as bold text). To mitigate this, the
+character pointer (n) moves back one character. While
+this may introduce other bugs later (not sure), it does
+not seem to break any tests in the current test suite.
+
+#+NAME: newline_begin_paragraph
+#+BEGIN_SRC c
+state->flags->newline = 0;
+orgparse_pgrph_begin(op, ud);
+n--; /* go backwards 1 */
 #+END_SRC
 *** DONE Tag Check
 CLOSED: [2019-09-21 Sat 18:39]
