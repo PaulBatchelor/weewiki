@@ -1496,7 +1496,16 @@ static FILE * mkfile(const unsigned char *dir,
     FILE *fp;
     char tmp[256];
     if (name == NULL) return stdout;
-    sprintf(tmp, "%s/%s.html", dir, name);
+
+    if(!strcmp((const char *)name, "index")) {
+        sprintf(tmp, "%s/index.html", dir);
+    } else {
+        getcwd(tmp, 256);
+        chdir((const char *)dir);
+        mkdir((const char*)name, 0755);
+        chdir(tmp);
+        sprintf(tmp, "%s/%s/index.html", dir, name);
+    }
     fp = fopen(tmp, "w");
     if (fp == NULL) {
         fprintf(stderr,
