@@ -842,12 +842,6 @@ static int p_link(int argc, char *argv[])
     int force;
 
     force = 0;
-    if (!strcmp(argv[1], "-f")) {
-        force = 1;
-        argv++;
-        argc--;
-    }
-
     if (argc < 3) {
         fprintf(stderr,
                 "Usage: %s key file\n",
@@ -855,6 +849,11 @@ static int p_link(int argc, char *argv[])
         return 1;
     }
 
+    if (argc > 1  && !strcmp(argv[1], "-f")) {
+        force = 1;
+        argv++;
+        argc--;
+    }
 
     if (!force) {
         if (access(argv[2], F_OK) != -1) {
