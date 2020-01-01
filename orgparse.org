@@ -69,8 +69,7 @@ int orgparse_test_parser(int argc, char *argv[])
     fread(buf, 1, sz, fp);
     orgparse_init(&op);
     setup_orgparse(&op);
-    rc = orgparse_run(&op, buf, sz, NULL);
-    orgparse_wrapup(&op, NULL, rc);
+    orgparse_run(&op, buf, sz, NULL);
     free(buf);
     return 0;
 }
@@ -751,7 +750,6 @@ static int test_block_block(void)
     orgparse op;
     int rc;
     bb_d bb;
-    int out;
     const char *str = "@!foo!@\n\n@!bar!@\n\n@!cat!@";
 
     bb.b = 0;
@@ -765,8 +763,8 @@ static int test_block_block(void)
     orgparse_set_pgrph(&op, bb_pgrph);
     orgparse_set_text(&op, bb_txt);
     orgparse_state_init(&bb.s, &op, str, strlen(str), &bb);
-    out = orgparse_state_run(&bb.s);
-    orgparse_wrapup(&op, &bb, out);
+    orgparse_state_run(&bb.s);
+    orgparse_end(&op, &bb, &bb.s);
 
     if (bb.b != 3) {
         printf("Found %d paragraphs begins. ", bb.b);
@@ -1028,7 +1026,7 @@ static void rp_pgrph(void *ud, int mode)
 {
     rp_d *rp;
     rp = ud;
-    if(mode) rp->e++;
+    if (mode) rp->e++;
 }
 
 static int test_rp(void)
@@ -1036,7 +1034,7 @@ static int test_rp(void)
     orgparse op;
     rp_d rp;
     int rc;
-    int out;
+    orgparse_state state;
     const char *txt = "text.\n\n";
 
     rc = OK;
@@ -1045,8 +1043,12 @@ static int test_rp(void)
 
     orgparse_set_pgrph(&op, rp_pgrph);
 
-    out = orgparse_run(&op, txt, strlen(txt), &rp);
-    orgparse_wrapup(&op, &rp, out);
+    orgparse_init_and_run(&op,
+                          txt,
+                          strlen(txt),
+                          &rp,
+                          &state);
+    orgparse_end(&op, &rp, &state);
 
     if (rp.e != 1) {
         printf("Wrong number of end paragraphs\n");
@@ -1430,6 +1432,8 @@ void orgparse_pgrph_end(orgparse *op, void *ud)
 Paragraphs do not end at the end of a file. It will need to
 be ended with =orgparse_wrapup=.
 
+Note: this is *deprecated* and should be removed ASAP.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void orgparse_wrapup(orgparse *op, void *ud, int rc);
@@ -1438,6 +1442,41 @@ void orgparse_wrapup(orgparse *op, void *ud, int rc);
 #+BEGIN_SRC c
 void orgparse_wrapup(orgparse *op, void *ud, int rc)
 {
+    if (rc) {
+        orgparse_pgrph_end(op, ud);
+    }
+}
+#+END_SRC
+
+A new version of =orgparse_wrapup= is used, this time taking
+in an =orgparse_state= variable. We'll call it
+=orgparse_end=.
+
+This was created because the single rc flag (txtmode) alone
+was giving some false positives, and rogue paragraph ends
+were happening.
+
+This new function checks both the =txtmode=
+and =newline= flags. A paragraph end will only happen when
+the =newline= flag is not set.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void orgparse_end(orgparse *op,
+                  void *ud,
+                  orgparse_state *state);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void orgparse_end(orgparse *op,
+                  void *ud,
+                  orgparse_state *state)
+{
+    int rc;
+    rc =
+        state->flags->txtmode &&
+        state->flags->newline == 0;
+
     if (rc) {
         orgparse_pgrph_end(op, ud);
     }
@@ -1468,7 +1507,9 @@ int orgparse_run(orgparse *op,
                  void *ud)
 {
     orgparse_state state;
-    return orgparse_init_and_run(op, txt, sz, ud, &state);
+    orgparse_init_and_run(op, txt, sz, ud, &state);
+    orgparse_end(op, ud, &state);
+    return 0; /* TODO: remove return value */
 }
 #+END_SRC
 #+NAME: funcdefs
