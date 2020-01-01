@@ -49,7 +49,7 @@ int orgparse_test_parser(int argc, char *argv[])
     FILE *fp;
     char *buf;
     size_t sz;
-    int rc;
+
     if (argc == 1) {
         fprintf(stderr, "Usage: %s file.org\n", argv[0]);
         return 1;
@@ -1057,6 +1057,52 @@ static int test_rp(void)
             printf("Suspected rogue paragraph detected\n");
         }
         rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
+*** Newline after formatted text causes paragraph end
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Paragraph after newlined formatted text", test_nlformpe},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+typedef struct {
+    int cnt;
+} nlformpe_d;
+
+static void nlformpe_pgrph(void *ud, int mode)
+{
+    nlformpe_d *x;
+    x = ud;
+    if (mode == 0) x->cnt++;
+}
+
+static int test_nlformpe(void)
+{
+    orgparse op;
+    nlformpe_d x;
+    int rc;
+    const char *txt = "*foo*\nbar";
+
+    rc = OK;
+    orgparse_init(&op);
+    x.cnt = 0;
+
+    orgparse_set_pgrph(&op, nlformpe_pgrph);
+
+    orgparse_run(&op, txt, strlen(txt), &x);
+
+    if (x.cnt == 2) {
+        printf("Incorrect number of paragarphs found\n");
+        printf("Should only be 1.\n");
+        printf("This is an expected bug.\n");
+        rc = FAIL;
+    } else if (x.cnt != 1) {
+        printf("Unexpected number of paragraphs: %d",
+               x.cnt);
     }
 
     return rc;
