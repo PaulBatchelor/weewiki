@@ -2087,7 +2087,8 @@ static int check_and_parse(orgparse *op,
         }
         n += len + 2;
         m = n;
-        if (n < sz && str[n] == '\n') n--;
+        /* commenting this out makes the tests pass */
+        /* if (n < sz && str[n] == '\n') n--; */
         *pos = n;
         *mark = m;
         rc = 1;
