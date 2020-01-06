@@ -1,0 +1,39 @@
+#+TITLE: WeeWiki Server
+This document aims to implement a local http server around
+weewiki. Instead of statically generating HTML,
+pages are dynamically generated.
+
+The single-header =httpserver.h= program by jeremycw will be
+http server implementation.
+
+The top-level function for this is =weewiki_server=. Since
+this is a command line program, it takes in =argc= and
+=argv= as arguments.
+
+=weewiki server= will run the server with all the default
+values. It will read the default a.db and weewiki.janet
+configuration file.
+
+The http server library has a single callback entry point
+called =handle_request=.
+
+First thing the requester does is parse the URL, this
+determines what to do.
+
+Right now, the only thing the server is programmed to do
+is parse org pages to HTML and display. Pages start with
+the URL =/wiki=. For example, the URL =/wiki/foo= would
+display the page =foo=.
+
+If it matches, the URL parser will extract the wiki page
+name and attempt to retrieve it from the database.
+
+Once the string is retrieved from the database, it is parsed
+via org-parse and converted to HTML.
+
+Instead of writing to a file, HTML is written to a buffer.
+This buffer is allocated by the weewiki server at startup.
+New callbacks will be required for the orgparse routine.
+
+When the org file has been written to the buffer, it can
+then be written to the body of the HTTP server.
