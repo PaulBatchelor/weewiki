@@ -444,6 +444,46 @@ void weewiki_close(weewiki_d *ww)
 }
 #+END_SRC
 ** Get
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_getter(weewiki_d *ww, const char *key);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_getter(weewiki_d *ww, const char *key)
+{
+    size_t sz;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    FILE *fp;
+
+    fp = stdout;
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "SELECT value FROM wiki WHERE(key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) {
+        fprintf(stderr,
+                "Could not find key '%s'\n",
+                key);
+        sqlite3_finalize(stmt);
+        return 1;
+    }
+
+    sz = sqlite3_column_bytes(stmt, 0);
+    fwrite(sqlite3_column_text(stmt, 0), 1, sz, fp);
+    sqlite3_finalize(stmt);
+    return 0;
+}
+#+END_SRC
 ** Create Tables
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -1829,5 +1869,42 @@ static int p_parse(int argc, char *argv[])
     weewiki_clean(&ww);
 
     return 0;
+}
+#+END_SRC
+* Get
+Gets a page and prints it to standard output.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "get", 3)) {
+    argc--;
+    argv++;
+    return p_get(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_get(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_get(int argc, char *argv[])
+{
+    weewiki_d ww;
+    int rc;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s file.org\n", argv[0]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    rc = weewiki_getter(&ww, argv[1]);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+
+    return rc;
 }
 #+END_SRC
