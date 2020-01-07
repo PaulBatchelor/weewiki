@@ -35,6 +35,9 @@ janet/%.o: janet/%.c
 jan.o: jan.c
 	$(C99) -c $(CFLAGS) $< -o $@
 
+server.o: server.c
+	$(C99) -c $(CFLAGS) $< -o $@
+
 jan.h: jan.c
 
 %.o: %.c

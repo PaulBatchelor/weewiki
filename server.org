@@ -14,13 +14,18 @@ The top level files are contained the the files
 #+BEGIN_SRC c :tangle server.h
 #ifndef WWSERVER_H
 #define WWSERVER_H
+<<typedefs>>
 <<funcdefs>>
 #endif
 #+END_SRC
 #+NAME: server.c
 #+BEGIN_SRC c :tangle server.c
 #include <stdio.h>
+#include <sqlite3.h>
+#define HTTPSERVER_IMPL
+#include "httpserver.h/httpserver.h"
 #include "server.h"
+<<structs>>
 <<functions>>
 #+END_SRC
 * TODO Top Level Function (weewiki_server)
@@ -45,7 +50,10 @@ int weewiki_server(int argc, char *argv[]);
 int weewiki_server(int argc, char *argv[])
 {
     /* TODO: implement */
+    wwserver_d wws;
+    wwserver_init(&wws, "a.db");
     printf("This is not yet implemented.\n");
+    wwserver_clean(&wws);
     return 1;
 }
 #+END_SRC
@@ -54,11 +62,50 @@ This is stuff that gets instantiated at startup.
 For now, this is probably just the database, though
 this could change.
 ** TODO Struct
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct wwserver_d wwserver_d;
+#+END_SRC
+Database + http server.
+#+NAME: structs
+#+BEGIN_SRC c
+struct wwserver_d {
+    sqlite3 *db;
+    struct http_server_s *server;
+};
+#+END_SRC
 ** TODO Startup
-Database is opened. For now, just "a.db".
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwserver_init(wwserver_d *wws, const char *filename);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int wwserver_init(wwserver_d *wws, const char *filename)
+{
+    /* TODO: implement */
+    wws->db = NULL;
+    wws->server = NULL;
+    return 1;
+}
+#+END_SRC
 ** TODO Cleanup
 Database is closed. May need to figure out how to cleanly
 break out of loop.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwserver_clean(wwserver_d *wws);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void wwserver_clean(wwserver_d *wws)
+{
+    /* TODO: implement */
+    if (wws->server != NULL) {
+        free(wws->server);
+    }
+}
+#+END_SRC
 * TODO Handle Request Callback
 The http server library has a single callback entry point.
 
