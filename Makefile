@@ -1,5 +1,7 @@
 WORGLE=worgle -g -Werror
 
+WWSERVER=1
+
 OBJ=weewiki.o jan.o
 
 # Janet objects
@@ -13,6 +15,11 @@ OBJ+=\
 CFLAGS += -g -Wall -O3 -I.
 
 LIBS=-lsqlite3
+
+ifeq ($(WWSERVER), 1)
+CFLAGS += -DWWSERVER
+OBJ += server.o
+endif
 
 C89=$(CC) --std=c89 -pedantic
 C99=$(CC) --std=c99

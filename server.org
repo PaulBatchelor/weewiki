@@ -9,25 +9,57 @@ The single-header =httpserver.h= program by jeremycw will be
 http server implementation.
 * Top Files
 The top level files are contained the the files
-=wwserver.c= and =wwserver.h=.
-* Top Level Function (weewiki_server)
+=server.c= and =server.h=.
+#+NAME: server.h
+#+BEGIN_SRC c :tangle server.h
+#ifndef WWSERVER_H
+#define WWSERVER_H
+<<funcdefs>>
+#endif
+#+END_SRC
+#+NAME: server.c
+#+BEGIN_SRC c :tangle server.c
+#include <stdio.h>
+#include "server.h"
+<<functions>>
+#+END_SRC
+* TODO Top Level Function (weewiki_server)
 The top-level function for this is =weewiki_server=. Since
 this is a command line program, it takes in =argc= and
 =argv= as arguments.
 
 =weewiki server= will run the server with all the default
 values. It will read the default a.db and weewiki.janet
-configuration file.
-* Global Data
+configuration file. This will be the only thing implemented
+for now.
+
+Later, the hope is to be able to pass in a weewiki database
+and have everything be served via that file (including
+an embedded config file).
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_server(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_server(int argc, char *argv[])
+{
+    /* TODO: implement */
+    printf("This is not yet implemented.\n");
+    return 1;
+}
+#+END_SRC
+* TODO Main Data
 This is stuff that gets instantiated at startup.
 For now, this is probably just the database, though
 this could change.
-** Startup
+** TODO Struct
+** TODO Startup
 Database is opened. For now, just "a.db".
-** Cleanup
+** TODO Cleanup
 Database is closed. May need to figure out how to cleanly
 break out of loop.
-* Handle Request Callback
+* TODO Handle Request Callback
 The http server library has a single callback entry point.
 
 The handle request callback can be divided up into the
@@ -36,7 +68,7 @@ following steps:
 - URL parsing
 - Writing to buffer
 - Pushing buffer to HTTP body
-* URL Parser
+* TODO URL Parser
 First thing the requester does is parse the URL, this
 determines what to do.
 
@@ -47,7 +79,7 @@ display the page =foo=.
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
-* Page Lookup
+* TODO Page Lookup
 Page lookup is done via a SQLite query on the database
 currently opened. Probably something like:
 
@@ -57,29 +89,29 @@ If the key doesn't exist, clean-up and return an error.
 
 Otherwise, the string value is extracted from the the column
 along with the size.
-* Parsing
+* TODO Parsing
 Once the string is retrieved from the database, it is parsed
 via org-parse and converted to HTML. Org parse is
 provisioned with the proper HTML callbacks that write
 to a buffer.
-* HTML buffer callbacks
+* TODO HTML buffer callbacks
 Instead of writing to a file, HTML is written to a buffer.
 This buffer is allocated/freed inside the request callback,
 and then bound to the org parser data.
 
 New callbacks will be required for the orgparse routine,
 which will be defined below.
-* Writing the buffer
+* TODO Writing the buffer
 The parsed HTML in the buffer is set to be the body of the
 http request.
 
 The status + header is set, and the the http server responds
 with =http_respond=.
-* wiki page request cleanup
+* TODO wiki page request cleanup
 After the request is sent, there is cleanup. The buffer
 is freed, and the SQLite statement is finalized via
 =sqlite3_finalize=.
-* Buffer Management
+* TODO Buffer Management
 All content must be written to in-memory location.
 This is handled in a very simple way via a buffer type
 called =wws_buffer=.
