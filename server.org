@@ -26,6 +26,8 @@ The top level files are contained the the files
 #include "httpserver.h/httpserver.h"
 #include "server.h"
 <<structs>>
+<<global_data>>
+<<static_funcdefs>>
 <<functions>>
 #+END_SRC
 * TODO Top Level Function (weewiki_server)
@@ -47,12 +49,28 @@ int weewiki_server(int argc, char *argv[]);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
+static int running = 1;
+
+static void quit (int sig)
+{
+    running = 0;
+    printf("Signal Interrupt\n");
+}
+
 int weewiki_server(int argc, char *argv[])
 {
     /* TODO: implement */
     wwserver_d wws;
     wwserver_init(&wws, "a.db");
+    wwserver_global_set(&wws);
     printf("This is not yet implemented.\n");
+    if (wws.server != NULL) {
+        signal(SIGINT, quit);
+        http_server_listen_poll(wws.server);
+        while (running) {
+            http_server_poll(wws.server);
+        }
+    }
     wwserver_clean(&wws);
     return 1;
 }
@@ -73,6 +91,33 @@ struct wwserver_d {
     sqlite3 *db;
     struct http_server_s *server;
 };
+#+END_SRC
+** TODO global data setters/getters
+#+NAME: global_data
+#+BEGIN_SRC c
+static wwserver_d *WWS = NULL;
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void wwserver_global_set(wwserver_d *p);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void wwserver_global_set(wwserver_d *p)
+{
+    WWS = p;
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static wwserver_d * wwserver_global_get(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static wwserver_d * wwserver_global_get(void)
+{
+    return WWS;
+}
 #+END_SRC
 ** TODO Startup
 #+NAME: funcdefs
@@ -115,6 +160,19 @@ following steps:
 - URL parsing
 - Writing to buffer
 - Pushing buffer to HTTP body
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void handle_request(struct http_request_s* request);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void handle_request(struct http_request_s* request)
+{
+    /* TODO: implement */
+    wwserver_d *wws;
+    wws = wwserver_global_get();
+}
+#+END_SRC
 * TODO URL Parser
 First thing the requester does is parse the URL, this
 determines what to do.
