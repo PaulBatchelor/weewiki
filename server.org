@@ -241,7 +241,7 @@ If the key doesn't exist, clean-up and return an error.
 
 Otherwise, the string value is extracted from the the column
 along with the size.
-* TODO Parsing
+* TODO Org Parsing
 Once the string is retrieved from the database, it is parsed
 via org-parse and converted to HTML. Org parse is
 provisioned with the proper HTML callbacks that write
@@ -263,15 +263,30 @@ with =http_respond=.
 After the request is sent, there is cleanup. The buffer
 is freed, and the SQLite statement is finalized via
 =sqlite3_finalize=.
-* TODO Buffer Management
+* WIP Buffer Management
+- State "WIP"        from "TODO"       [2020-01-12 Sun 17:41]
 All content must be written to in-memory location.
 This is handled in a very simple way via a buffer type
 called =wws_buffer=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct wws_buffer wws_buffer;
+#+END_SRC
 
 A =wws_buffer= struct contains the buffer itself (an
 unsigned char array), the current position of the buffer
 (which is therefore the current size), and the
 total size.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct wws_buffer {
+    int pos;
+    int size;
+    unsigned char *buf;
+};
+#+END_SRC
 
 The =wws_buffer= is allocated with the function
 =wws_buffer_alloc=. Choose a largish size because this
@@ -279,6 +294,53 @@ is the maximum HTML size for a page. Re-allocation could
 come later, but for this proof-of concept, a fixed
 size is simple and good enough.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wws_buffer_alloc(wws_buffer *wb, int size);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void wws_buffer_alloc(wws_buffer *wb, int size)
+{
+    wb->buf = calloc(1, size);
+    wb->pos = 0;
+    wb->size = size;
+}
+#+END_SRC
+
 A allocated buffer must be freed with =wws_buffer_free=.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wws_buffer_free(wws_buffer *wb);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void wws_buffer_free(wws_buffer *wb)
+{
+    wb->size = 0;
+    wb->pos = 0;
+    free(wb->buf);
+}
+#+END_SRC
+
 Write to the buffer using =wws_buffer_write=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wws_buffer_write(wws_buffer *wb,
+                      const unsigned char *buf,
+                      int size);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void wws_buffer_write(wws_buffer *wb,
+                      const unsigned char *buf,
+                      int size)
+{
+    /* TODO: implement me */
+}
+#+END_SRC
