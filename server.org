@@ -130,7 +130,7 @@ int wwserver_init(wwserver_d *wws, const char *filename)
 {
     /* TODO: implement */
     wws->db = NULL;
-    wws->server = NULL;
+    wws->server = http_server_init(8080, handle_request);
     return 1;
 }
 #+END_SRC
@@ -170,7 +170,29 @@ static void handle_request(struct http_request_s* request)
 {
     /* TODO: implement */
     wwserver_d *wws;
+    struct http_string_s target;
+    char *name;
+    int len;
     wws = wwserver_global_get();
+    target = http_request_target(request);
+
+    if (wws == NULL) return;
+
+    /* TODO: parse URL */
+
+    len = 0;
+    name = NULL;
+
+    if (is_wiki(&target, &name, &len)) {
+        /* TODO: get page */
+        /* TODO: set up parser */
+        /* TODO: write to buffer */
+        /* TODO: write http request */
+    } else {
+        /* TODO: 404 not found */
+    }
+
+
 }
 #+END_SRC
 * TODO URL Parser
@@ -181,6 +203,26 @@ Right now, the only thing the server is programmed to do
 is parse org pages to HTML and display. Pages start with
 the URL =/wiki=. For example, the URL =/wiki/foo= would
 display the page =foo=.
+
+The wiki page is parsed with the function =is_wiki=. If
+true, the output will return the name + length.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int is_wiki(struct http_string_s *target,
+                   char **name,
+                   int *len);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int is_wiki(struct http_string_s *target,
+                   char **name,
+                   int *len)
+{
+    /* TODO: implement */
+    return 0;
+}
+#+END_SRC
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
@@ -206,7 +248,7 @@ and then bound to the org parser data.
 
 New callbacks will be required for the orgparse routine,
 which will be defined below.
-* TODO Writing the buffer
+* TODO Writing the http request
 The parsed HTML in the buffer is set to be the body of the
 http request.
 
