@@ -1,3 +1,4 @@
+#+TODO: TODO(t) WIP(w@/!) | DONE(d!)
 #+TITLE: WeeWiki Server
 A work in progress. Rambles for now. No code.
 
@@ -30,7 +31,8 @@ The top level files are contained the the files
 <<static_funcdefs>>
 <<functions>>
 #+END_SRC
-* TODO Top Level Function (weewiki_server)
+* DONE Top Level Function (weewiki_server)
+CLOSED: [2020-01-12 Sun 17:27]
 The top-level function for this is =weewiki_server=. Since
 this is a command line program, it takes in =argc= and
 =argv= as arguments.
@@ -59,7 +61,6 @@ static void quit (int sig)
 
 int weewiki_server(int argc, char *argv[])
 {
-    /* TODO: implement */
     wwserver_d wws;
     wwserver_init(&wws, "a.db");
     wwserver_global_set(&wws);
@@ -92,7 +93,8 @@ struct wwserver_d {
     struct http_server_s *server;
 };
 #+END_SRC
-** TODO global data setters/getters
+** WIP global data setters/getters
+- State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: global_data
 #+BEGIN_SRC c
 static wwserver_d *WWS = NULL;
@@ -119,7 +121,8 @@ static wwserver_d * wwserver_global_get(void)
     return WWS;
 }
 #+END_SRC
-** TODO Startup
+** WIP Startup
+- State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int wwserver_init(wwserver_d *wws, const char *filename);
@@ -128,13 +131,13 @@ int wwserver_init(wwserver_d *wws, const char *filename);
 #+BEGIN_SRC c
 int wwserver_init(wwserver_d *wws, const char *filename)
 {
-    /* TODO: implement */
     wws->db = NULL;
     wws->server = http_server_init(8080, handle_request);
     return 1;
 }
 #+END_SRC
-** TODO Cleanup
+** WIP Cleanup
+- State "WIP"        from "TODO"       [2020-01-12 Sun 17:30]
 Database is closed. May need to figure out how to cleanly
 break out of loop.
 #+NAME: funcdefs
@@ -145,13 +148,13 @@ void wwserver_clean(wwserver_d *wws);
 #+BEGIN_SRC c
 void wwserver_clean(wwserver_d *wws)
 {
-    /* TODO: implement */
     if (wws->server != NULL) {
         free(wws->server);
     }
 }
 #+END_SRC
-* TODO Handle Request Callback
+* WIP Handle Request Callback
+- State "WIP"        from "TODO"       [2020-01-12 Sun 17:34]
 The http server library has a single callback entry point.
 
 The handle request callback can be divided up into the
@@ -166,6 +169,7 @@ static void handle_request(struct http_request_s* request);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
+#define RESPONSE "WeeWiki says: Come back a wee bit later."
 static void handle_request(struct http_request_s* request)
 {
     /* TODO: implement */
@@ -178,21 +182,22 @@ static void handle_request(struct http_request_s* request)
 
     if (wws == NULL) return;
 
-    /* TODO: parse URL */
-
     len = 0;
     name = NULL;
 
+    /* TODO: parse URL */
     if (is_wiki(&target, &name, &len)) {
         /* TODO: get page */
         /* TODO: set up parser */
         /* TODO: write to buffer */
         /* TODO: write http request */
     } else {
-        /* TODO: 404 not found */
+        struct http_response_s* response = http_response_init();
+        http_response_status(response, 404);
+        http_response_header(response, "Content-Type", "text/plain");
+        http_response_body(response, RESPONSE, sizeof(RESPONSE) - 1);
+        http_respond(request, response);
     }
-
-
 }
 #+END_SRC
 * TODO URL Parser
