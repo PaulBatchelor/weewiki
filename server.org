@@ -169,13 +169,13 @@ static void handle_request(struct http_request_s* request);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-#define RESPONSE "WeeWiki says: Come back a wee bit later."
+#define RESPONSE "What is my purpose?"
 static void handle_request(struct http_request_s* request)
 {
     /* TODO: implement */
     wwserver_d *wws;
     struct http_string_s target;
-    char *name;
+    const char *name;
     int len;
     wws = wwserver_global_get();
     target = http_request_target(request);
@@ -183,14 +183,23 @@ static void handle_request(struct http_request_s* request)
     if (wws == NULL) return;
 
     len = 0;
-    name = NULL;
 
-    /* TODO: parse URL */
     if (is_wiki(&target, &name, &len)) {
+        wws_buffer buf;
+        struct http_response_s* response = http_response_init();
+        wws_buffer_alloc(&buf, 2048);
+
+        wws_buffer_write(&buf, (const unsigned char *)"Found page: ", 12);
+        wws_buffer_write(&buf, (const unsigned char *)name, len);
+        http_response_status(response, 200);
+        http_response_header(response, "Content-Type", "text/plain");
+        http_response_body(response, (const char *)buf.buf, buf.pos);
+        http_respond(request, response);
         /* TODO: get page */
         /* TODO: set up parser */
         /* TODO: write to buffer */
         /* TODO: write http request */
+        wws_buffer_free(&buf);
     } else {
         struct http_response_s* response = http_response_init();
         http_response_status(response, 404);
@@ -200,7 +209,10 @@ static void handle_request(struct http_request_s* request)
     }
 }
 #+END_SRC
-* TODO URL Parser
+* DONE URL Parser
+CLOSED: [2020-01-14 Tue 10:30]
+- State "DONE"       from "WIP"        [2020-01-14 Tue 10:30]
+- State "WIP"        from "TODO"       [2020-01-14 Tue 10:18]
 First thing the requester does is parse the URL, this
 determines what to do.
 
@@ -215,17 +227,41 @@ true, the output will return the name + length.
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int is_wiki(struct http_string_s *target,
-                   char **name,
+                   const char **name,
                    int *len);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
 static int is_wiki(struct http_string_s *target,
-                   char **name,
+                   const char **name,
                    int *len)
 {
     /* TODO: implement */
-    return 0;
+    const char *buf;
+    int size;
+    int pos;
+
+    *len = 0;
+
+
+    buf = target->buf;
+    size = target->len;
+
+    if (size < 7) return 0; /* minimum: /wiki/N */
+
+
+    pos = 1; /* skip first whack */
+
+
+    if (!strcmp(&buf[pos], "wiki/")) return 0;
+
+    pos += 5;
+
+    *name = &buf[pos];
+    *len = size - pos;
+
+
+    return 1;
 }
 #+END_SRC
 
@@ -342,5 +378,14 @@ void wws_buffer_write(wws_buffer *wb,
                       int size)
 {
     /* TODO: implement me */
+    int i;
+
+    if (wb->pos >= wb->size) return;
+
+    for (i = 0; i < size; i++) {
+        wb->buf[wb->pos] = buf[i];
+        wb->pos++;
+        if (wb->pos >= wb->size) break;
+    }
 }
 #+END_SRC
