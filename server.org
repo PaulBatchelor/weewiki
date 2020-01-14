@@ -26,6 +26,7 @@ The top level files are contained the the files
 #define HTTPSERVER_IMPL
 #include "httpserver.h/httpserver.h"
 #include "orgparse.h"
+#include "weewiki.h"
 #include "server.h"
 <<structs>>
 <<global_data>>
@@ -48,7 +49,7 @@ and have everything be served via that file (including
 an embedded config file).
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int weewiki_server(int argc, char *argv[]);
+int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
@@ -60,12 +61,15 @@ static void quit (int sig)
     printf("Signal Interrupt\n");
 }
 
-int weewiki_server(int argc, char *argv[])
+int weewiki_server(weewiki_d *ww, int argc, char *argv[])
 {
     wwserver_d wws;
-    wwserver_init(&wws, "a.db", 8080);
+    wws.ww = ww;
+    weewiki_init(ww);
+    weewiki_open(ww, "a.db");
+    wwserver_init(&wws, 8080);
     wwserver_global_set(&wws);
-    printf("This is not yet implemented.\n");
+    printf("Warning: this is not yet fully implemented.\n");
     if (wws.server != NULL) {
         signal(SIGINT, quit);
         http_server_listen_poll(wws.server);
@@ -74,6 +78,8 @@ int weewiki_server(int argc, char *argv[])
         }
     }
     wwserver_clean(&wws);
+    weewiki_close(ww);
+    weewiki_clean(ww);
     return 1;
 }
 #+END_SRC
@@ -90,8 +96,8 @@ Database + http server.
 #+NAME: structs
 #+BEGIN_SRC c
 struct wwserver_d {
-    sqlite3 *db;
     struct http_server_s *server;
+    weewiki_d *ww;
 };
 #+END_SRC
 ** WIP global data setters/getters
@@ -126,13 +132,12 @@ static wwserver_d * wwserver_global_get(void)
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int wwserver_init(wwserver_d *wws, const char *filename, int port);
+int wwserver_init(wwserver_d *wws, int port);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int wwserver_init(wwserver_d *wws, const char *filename, int port)
+int wwserver_init(wwserver_d *wws, int port)
 {
-    sqlite3_open(filename, &wws->db);
     wws->server = http_server_init(port, handle_request);
     return 1;
 }
@@ -152,7 +157,7 @@ void wwserver_clean(wwserver_d *wws)
     if (wws->server != NULL) {
         free(wws->server);
     }
-    sqlite3_close(wws->db);
+    /* weewiki data gets cleaned elsewhere */
 }
 #+END_SRC
 * WIP Handle Request Callback
@@ -169,6 +174,20 @@ following steps:
 #+BEGIN_SRC c
 static void handle_request(struct http_request_s* request);
 #+END_SRC
+
+This is the struct passed to the org parser.
+It will go somewhere else eventually, but
+it was first conceived here.
+
+#+NAME: structs
+#+BEGIN_SRC c
+typedef struct {
+    orgparse *op;
+    orgparse_state *state;
+    wws_buffer *buf;
+} wws_parser_d;
+#+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 #define RESPONSE "What is my purpose?"
@@ -195,9 +214,7 @@ static void handle_request(struct http_request_s* request)
         struct http_response_s* response = http_response_init();
         wws_buffer_alloc(&buf, 2048);
 
-
-
-        db = wws->db;
+        db = weewiki_db(wws->ww);
         sqlite3_prepare_v2(db,
                         "SELECT value FROM wiki WHERE(key==?1);",
                         -1,
@@ -207,17 +224,34 @@ static void handle_request(struct http_request_s* request)
         rc = sqlite3_step(stmt);
 
         if (rc != SQLITE_ROW) {
-            wws_buffer_write(&buf,
-            (const unsigned char *)"Could not find page: ", 21);
-            wws_buffer_write(&buf, (const unsigned char *)name, len);
+            wws_buffer_write(&buf, "Could not find page: ", 21);
+            wws_buffer_write(&buf, name, len);
             http_response_status(response, 404);
             http_response_header(response, "Content-Type", "text/plain");
         } else {
-            http_response_header(response, "Content-Type", "text/plain");
+            orgparse *op;
+            orgparse_state *state;
+            wws_parser_d pd;
+
+            op = calloc(1, orgparse_size());
+            state = calloc(1, orgparse_state_size());
+            pd.op = op;
+            pd.state = state;
+            pd.buf = &buf;
+            wws_orgparse_setup(op);
+            http_response_header(response, "Content-Type", "text/html");
             http_response_status(response, 200);
-            wws_buffer_write(&buf,
-                             sqlite3_column_text(stmt, 0),
-                             sqlite3_column_bytes(stmt, 0));
+            /* wws_buffer_write(&buf, */
+            /*                  sqlite3_column_text(stmt, 0), */
+            /*                  sqlite3_column_bytes(stmt, 0)); */
+            orgparse_init_and_run(op,
+                                  (const char *)sqlite3_column_text(stmt, 0),
+                                  sqlite3_column_bytes(stmt, 0),
+                                  &pd,
+                                  state);
+            orgparse_end(op, &pd, state);
+            free(op);
+            free(state);
         }
 
 
@@ -289,7 +323,6 @@ static int is_wiki(struct http_string_s *target,
     *name = &buf[pos];
     *len = size - pos;
 
-
     return 1;
 }
 #+END_SRC
@@ -342,14 +375,15 @@ static void html_header(void *ud,
                         size_t sz,
                         int lvl)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* lvl++; */
-    /* fprintf(fp, "\n<h%d>", lvl); */
-    /* fwrite(h, 1, sz, fp); */
-    /* fprintf(fp, "</h%d>\n\n", lvl); */
+    wws_parser_d *p;
+    char tmp[16];
+    int tmp_sz;
+    p = ud;
+    tmp_sz = sprintf(tmp, "\n<h%d>", lvl);
+    wws_buffer_write(p->buf, tmp, tmp_sz);
+    wws_buffer_write(p->buf, h, sz);
+    tmp_sz = sprintf(tmp, "</h%d>", lvl);
+    wws_buffer_write(p->buf, tmp, tmp_sz);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -363,11 +397,9 @@ static void html_text(void *ud,
                       const char *str,
                       size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* fwrite(str, 1, sz, fp); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, str, sz);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -388,13 +420,18 @@ static void html_bold(void *ud,
     /* fprintf(fp, "<b>"); */
     /* fwrite(str, 1, sz, fp); */
     /* fprintf(fp, "</b>"); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<b>", 3);
+    wws_buffer_write(p->buf, str, sz);
+    wws_buffer_write(p->buf, "</b>", 4);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
 #+BEGIN_SRC c
 orgparse_set_bold(op, html_bold);
 #+END_SRC
-** Aux
+** TODO Aux
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_aux(void *ud,
@@ -419,11 +456,9 @@ static void html_newline(void *ud,
                          const char *str,
                          size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* fprintf(fp, "<br>\n"); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<br>\n", 6);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -437,20 +472,18 @@ static void html_code(void *ud,
                       const char *str,
                       size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* fprintf(fp, "<code>"); */
-    /* fwrite(str, 1, sz, fp); */
-    /* fprintf(fp, "</code>"); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<code>", 6);
+    wws_buffer_write(p->buf, str, sz);
+    wws_buffer_write(p->buf, "</code>", 7);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
 #+BEGIN_SRC c
 orgparse_set_code(op, html_code);
 #+END_SRC
-** Code Block
+** TODO Code Block
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_codeblock(void *ud,
@@ -478,7 +511,7 @@ static void html_codeblock(void *ud,
 #+BEGIN_SRC c
 orgparse_set_codeblock(op, html_codeblock);
 #+END_SRC
-** Name
+** TODO Name
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_name(void *ud,
@@ -498,16 +531,14 @@ static void html_title(void *ud,
                            const char *str,
                            size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* fprintf(fp, "<title>"); */
-    /* fwrite(str, 1, sz, fp); */
-    /* fprintf(fp, "</title>\n"); */
-    /* fprintf(fp, "<h1>"); */
-    /* fwrite(str, 1, sz, fp); */
-    /* fprintf(fp, "</h1>\n"); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<title>", 7);
+    wws_buffer_write(p->buf, str, sz);
+    wws_buffer_write(p->buf, "</title>", 8);
+    wws_buffer_write(p->buf, "<h1>", 4);
+    wws_buffer_write(p->buf, str, sz);
+    wws_buffer_write(p->buf, "</h1>", 5);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -523,15 +554,13 @@ static void html_link(void *ud,
                       const char *name,
                       size_t name_sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-    /* fprintf(fp, "<a href=\""); */
-    /* fwrite(link, 1, link_sz, fp); */
-    /* fprintf(fp, "\">"); */
-    /* fwrite(name, 1, name_sz, fp); */
-    /* fprintf(fp, "</a>"); */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<a href=\"", 9);
+    wws_buffer_write(p->buf, link, link_sz);
+    wws_buffer_write(p->buf, "\">", 2);
+    wws_buffer_write(p->buf, name, name_sz);
+    wws_buffer_write(p->buf, "</a>", 4);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -543,16 +572,13 @@ orgparse_set_link(op, html_link);
 #+BEGIN_SRC c
 static void html_pgrph(void *ud, int mode)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
-
-    /* if (mode) { */
-    /*     fprintf(fp, "</p>\n"); */
-    /* } else { */
-    /*     fprintf(fp, "<p>"); */
-    /* } */
+    wws_parser_d *p;
+    p = ud;
+    if (mode) {
+        wws_buffer_write(p->buf, "</p>", 4);
+    } else {
+        wws_buffer_write(p->buf, "<p>", 3);
+    }
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -637,7 +663,7 @@ Write to the buffer using =wws_buffer_write=.
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void wws_buffer_write(wws_buffer *wb,
-                      const unsigned char *buf,
+                      const char *buf,
                       int size);
 #+END_SRC
 
@@ -648,7 +674,7 @@ away.
 #+NAME: functions
 #+BEGIN_SRC c
 void wws_buffer_write(wws_buffer *wb,
-                      const unsigned char *buf,
+                      const char *buf,
                       int size)
 {
     int i;

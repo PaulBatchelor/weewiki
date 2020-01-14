@@ -1135,6 +1135,19 @@ void orgparse_init(orgparse *op)
     <<init>>
 }
 #+END_SRC
+*** Size
+When using is opaquely.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t orgparse_size(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+size_t orgparse_size(void)
+{
+    return sizeof(orgparse);
+}
+#+END_SRC
 ** Callbacks
 All callbacks have the same first 3 arguments: a generic
 pointer, the string, and the length of the string.
@@ -1723,6 +1736,18 @@ void orgparse_state_init(orgparse_state *state,
     state->ud = ud;
     state->blk = NULL;
     state->flags->newline = 0;
+}
+#+END_SRC
+**** Size
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t orgparse_state_size(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+size_t orgparse_state_size(void)
+{
+    return sizeof(orgparse_state);
 }
 #+END_SRC
 *** State Run

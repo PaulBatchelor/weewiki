@@ -112,6 +112,17 @@ if (ww->db != NULL) {
     weewiki_close(ww);
 }
 #+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sqlite3* weewiki_db(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+sqlite3* weewiki_db(weewiki_d *ww)
+{
+    return ww->db;
+}
+#+END_SRC
 *** Global filehandle
 #+NAME: contents
 #+BEGIN_SRC c
@@ -401,6 +412,8 @@ void weewiki_clear(weewiki_d *ww)
                 NULL);
 }
 #+END_SRC
+** Parsing
+See the Export section.
 * Database
 ** Open
 A database is opened with =weewiki_open=.
@@ -1914,7 +1927,7 @@ default. Only enabled if =WWSERVER= is defined.
 
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-int weewiki_server(int argc, char *argv[]);
+int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 #+END_SRC
 #+NAME: matching
 #+BEGIN_SRC c
@@ -1922,7 +1935,24 @@ int weewiki_server(int argc, char *argv[]);
 else if (match(argv[1], len, "server", 6)) {
     argc--;
     argv++;
-    return weewiki_server(argc, argv);
+    return p_server(argc, argv);
+}
+#endif
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+#ifdef WWSERVER
+static int p_server(int argc, char *argv[]);
+#endif
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+#ifdef WWSERVER
+static int p_server(int argc, char *argv[])
+{
+    weewiki_d ww;
+    return weewiki_server(&ww, argc, argv);
 }
 #endif
 #+END_SRC
