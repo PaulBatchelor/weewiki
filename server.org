@@ -28,6 +28,7 @@ The top level files are contained the the files
 #include "orgparse.h"
 #include "weewiki.h"
 #include "server.h"
+#include "jan.h"
 <<structs>>
 <<global_data>>
 <<static_funcdefs>>
@@ -98,6 +99,7 @@ Database + http server.
 struct wwserver_d {
     struct http_server_s *server;
     weewiki_d *ww;
+    JanetTable *env;
 };
 #+END_SRC
 ** WIP global data setters/getters
@@ -139,6 +141,8 @@ int wwserver_init(wwserver_d *wws, int port);
 int wwserver_init(wwserver_d *wws, int port)
 {
     wws->server = http_server_init(port, handle_request);
+    wws->env = weewiki_janet_setup();
+    weewiki_janet_loadconfig(wws->env);
     return 1;
 }
 #+END_SRC
@@ -157,6 +161,7 @@ void wwserver_clean(wwserver_d *wws)
     if (wws->server != NULL) {
         free(wws->server);
     }
+    weewiki_janet_cleanup();
     /* weewiki data gets cleaned elsewhere */
 }
 #+END_SRC
@@ -329,22 +334,8 @@ static int is_wiki(struct http_string_s *target,
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
-* TODO Page Lookup
-Page lookup is done via a SQLite query on the database
-currently opened. Probably something like:
-
-"SELECT value FROM wiki WHERE(key==?1);"
-
-If the key doesn't exist, clean-up and return an error.
-
-Otherwise, the string value is extracted from the the column
-along with the size.
-* TODO Org Parsing
-Once the string is retrieved from the database, it is parsed
-via org-parse and converted to HTML. Org parse is
-provisioned with the proper HTML callbacks that write
-to a buffer.
-* TODO HTML buffer callbacks
+* WIP HTML buffer callbacks
+- State "WIP"        from "TODO"       [2020-01-14 Tue 14:55]
 Instead of writing to a file, HTML is written to a buffer.
 This buffer is allocated/freed inside the request callback,
 and then bound to the org parser data.
@@ -585,16 +576,6 @@ static void html_pgrph(void *ud, int mode)
 #+BEGIN_SRC c
 orgparse_set_pgrph(op, html_pgrph);
 #+END_SRC
-* TODO Writing the http request
-The parsed HTML in the buffer is set to be the body of the
-http request.
-
-The status + header is set, and the the http server responds
-with =http_respond=.
-* TODO wiki page request cleanup
-After the request is sent, there is cleanup. The buffer
-is freed, and the SQLite statement is finalized via
-=sqlite3_finalize=.
 * WIP Buffer Management
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:41]
 All content must be written to in-memory location.
