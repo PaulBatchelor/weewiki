@@ -25,6 +25,7 @@ The top level files are contained the the files
 #include <sqlite3.h>
 #define HTTPSERVER_IMPL
 #include "httpserver.h/httpserver.h"
+#include "orgparse.h"
 #include "server.h"
 <<structs>>
 <<global_data>>
@@ -317,6 +318,247 @@ and then bound to the org parser data.
 
 New callbacks will be required for the orgparse routine,
 which will be defined below.
+
+This is for now just copy-pasted from the weewiki codebase,
+with the bits commented out.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wws_orgparse_setup(orgparse *op);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+<<orgparse_callbacks>>
+void wws_orgparse_setup(orgparse *op)
+{
+    orgparse_init(op);
+    <<orgparse_html_setup>>
+}
+#+END_SRC
+** Header
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_header(void *ud,
+                        const char *h,
+                        size_t sz,
+                        int lvl)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* lvl++; */
+    /* fprintf(fp, "\n<h%d>", lvl); */
+    /* fwrite(h, 1, sz, fp); */
+    /* fprintf(fp, "</h%d>\n\n", lvl); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_header(op, html_header);
+#+END_SRC
+** Text
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_text(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fwrite(str, 1, sz, fp); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_text(op, html_text);
+#+END_SRC
+** Bold
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_bold(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fprintf(fp, "<b>"); */
+    /* fwrite(str, 1, sz, fp); */
+    /* fprintf(fp, "</b>"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_bold(op, html_bold);
+#+END_SRC
+** Aux
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_aux(void *ud,
+                     const char *str,
+                     size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* ex = ud; */
+    /* janet_dobytes(ex->env, */
+    /*               (const uint8_t *)str, sz, */
+    /*               NULL, NULL); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_aux(op, html_aux);
+#+END_SRC
+** Newline
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_newline(void *ud,
+                         const char *str,
+                         size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fprintf(fp, "<br>\n"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_newline(op, html_newline);
+#+END_SRC
+** Code
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_code(void *ud,
+                      const char *str,
+                      size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fprintf(fp, "<code>"); */
+    /* fwrite(str, 1, sz, fp); */
+    /* fprintf(fp, "</code>"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_code(op, html_code);
+#+END_SRC
+** Code Block
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_codeblock(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* size_t n; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+
+    /* fprintf(fp, "<pre><code>"); */
+    /* for (n = 0; n < sz; n++) { */
+    /*     switch (str[n]) { */
+    /*         default: */
+    /*             fputc(str[n], fp); */
+    /*             break; */
+    /*     } */
+    /* } */
+    /* fprintf(fp, "</pre></code>\n"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_codeblock(op, html_codeblock);
+#+END_SRC
+** Name
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_name(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_name(op, html_name);
+#+END_SRC
+** Title
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_title(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fprintf(fp, "<title>"); */
+    /* fwrite(str, 1, sz, fp); */
+    /* fprintf(fp, "</title>\n"); */
+    /* fprintf(fp, "<h1>"); */
+    /* fwrite(str, 1, sz, fp); */
+    /* fprintf(fp, "</h1>\n"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_title(op, html_title);
+#+END_SRC
+** Link
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_link(void *ud,
+                      const char *link,
+                      size_t link_sz,
+                      const char *name,
+                      size_t name_sz)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+    /* fprintf(fp, "<a href=\""); */
+    /* fwrite(link, 1, link_sz, fp); */
+    /* fprintf(fp, "\">"); */
+    /* fwrite(name, 1, name_sz, fp); */
+    /* fprintf(fp, "</a>"); */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_link(op, html_link);
+#+END_SRC
+** Paragraph
+#+NAME: orgparse_callbacks
+#+BEGIN_SRC c
+static void html_pgrph(void *ud, int mode)
+{
+    /* weewiki_export_d *ex; */
+    /* FILE *fp; */
+    /* ex = ud; */
+    /* fp = ex->fp; */
+
+    /* if (mode) { */
+    /*     fprintf(fp, "</p>\n"); */
+    /* } else { */
+    /*     fprintf(fp, "<p>"); */
+    /* } */
+}
+#+END_SRC
+#+NAME: orgparse_html_setup
+#+BEGIN_SRC c
+orgparse_set_pgrph(op, html_pgrph);
+#+END_SRC
 * TODO Writing the http request
 The parsed HTML in the buffer is set to be the body of the
 http request.
@@ -399,17 +641,18 @@ void wws_buffer_write(wws_buffer *wb,
                       int size);
 #+END_SRC
 
+This copies over a chunk of data to the internal buffer.
+If the buffer is full, it just stops adding and breaks
+away.
+
 #+NAME: functions
 #+BEGIN_SRC c
 void wws_buffer_write(wws_buffer *wb,
                       const unsigned char *buf,
                       int size)
 {
-    /* TODO: implement me */
     int i;
-
     if (wb->pos >= wb->size) return;
-
     for (i = 0; i < size; i++) {
         wb->buf[wb->pos] = buf[i];
         wb->pos++;
