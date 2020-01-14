@@ -62,7 +62,7 @@ static void quit (int sig)
 int weewiki_server(int argc, char *argv[])
 {
     wwserver_d wws;
-    wwserver_init(&wws, "a.db");
+    wwserver_init(&wws, "a.db", 8080);
     wwserver_global_set(&wws);
     printf("This is not yet implemented.\n");
     if (wws.server != NULL) {
@@ -125,14 +125,14 @@ static wwserver_d * wwserver_global_get(void)
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int wwserver_init(wwserver_d *wws, const char *filename);
+int wwserver_init(wwserver_d *wws, const char *filename, int port);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int wwserver_init(wwserver_d *wws, const char *filename)
+int wwserver_init(wwserver_d *wws, const char *filename, int port)
 {
-    wws->db = NULL;
-    wws->server = http_server_init(8080, handle_request);
+    sqlite3_open(filename, &wws->db);
+    wws->server = http_server_init(port, handle_request);
     return 1;
 }
 #+END_SRC
@@ -151,6 +151,7 @@ void wwserver_clean(wwserver_d *wws)
     if (wws->server != NULL) {
         free(wws->server);
     }
+    sqlite3_close(wws->db);
 }
 #+END_SRC
 * WIP Handle Request Callback
@@ -186,13 +187,39 @@ static void handle_request(struct http_request_s* request)
 
     if (is_wiki(&target, &name, &len)) {
         wws_buffer buf;
+        sqlite3 *db;
+        sqlite3_stmt *stmt;
+        int rc;
+
         struct http_response_s* response = http_response_init();
         wws_buffer_alloc(&buf, 2048);
 
-        wws_buffer_write(&buf, (const unsigned char *)"Found page: ", 12);
-        wws_buffer_write(&buf, (const unsigned char *)name, len);
-        http_response_status(response, 200);
-        http_response_header(response, "Content-Type", "text/plain");
+
+
+        db = wws->db;
+        sqlite3_prepare_v2(db,
+                        "SELECT value FROM wiki WHERE(key==?1);",
+                        -1,
+                        &stmt,
+                        NULL);
+        sqlite3_bind_text(stmt, 1, name, len, NULL);
+        rc = sqlite3_step(stmt);
+
+        if (rc != SQLITE_ROW) {
+            wws_buffer_write(&buf,
+            (const unsigned char *)"Could not find page: ", 21);
+            wws_buffer_write(&buf, (const unsigned char *)name, len);
+            http_response_status(response, 404);
+            http_response_header(response, "Content-Type", "text/plain");
+        } else {
+            http_response_header(response, "Content-Type", "text/plain");
+            http_response_status(response, 200);
+            wws_buffer_write(&buf,
+                             sqlite3_column_text(stmt, 0),
+                             sqlite3_column_bytes(stmt, 0));
+        }
+
+
         http_response_body(response, (const char *)buf.buf, buf.pos);
         http_respond(request, response);
         /* TODO: get page */
@@ -200,6 +227,7 @@ static void handle_request(struct http_request_s* request)
         /* TODO: write to buffer */
         /* TODO: write http request */
         wws_buffer_free(&buf);
+        sqlite3_finalize(stmt);
     } else {
         struct http_response_s* response = http_response_init();
         http_response_status(response, 404);
