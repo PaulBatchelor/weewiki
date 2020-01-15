@@ -84,11 +84,13 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     return 1;
 }
 #+END_SRC
-* TODO Main Data
+* WIP Main Data
+- State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
 This is stuff that gets instantiated at startup.
 For now, this is probably just the database, though
 this could change.
-** TODO Struct
+** WIP Struct
+- State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct wwserver_d wwserver_d;
@@ -576,7 +578,9 @@ static void html_pgrph(void *ud, int mode)
 #+BEGIN_SRC c
 orgparse_set_pgrph(op, html_pgrph);
 #+END_SRC
-* WIP Buffer Management
+* DONE Buffer Management
+CLOSED: [2020-01-14 Tue 15:17]
+- State "DONE"       from "WIP"        [2020-01-14 Tue 15:17]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:41]
 All content must be written to in-memory location.
 This is handled in a very simple way via a buffer type
