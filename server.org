@@ -270,9 +270,6 @@ static void handle_request(struct http_request_s* request)
             http_response_header(response, "Content-Type", "text/html");
             http_response_status(response, 200);
             weewiki_ud_set(wws->ww, &pd);
-            /* wws_buffer_write(&buf, */
-            /*                  sqlite3_column_text(stmt, 0), */
-            /*                  sqlite3_column_bytes(stmt, 0)); */
 
             janet_dostring(wws->env,
                         (const unsigned char *)"(html-header)",
@@ -292,13 +289,8 @@ static void handle_request(struct http_request_s* request)
             free(state);
         }
 
-
         http_response_body(response, (const char *)buf.buf, buf.pos);
         http_respond(request, response);
-        /* TODO: get page */
-        /* TODO: set up parser */
-        /* TODO: write to buffer */
-        /* TODO: write http request */
         wws_buffer_free(&buf);
         sqlite3_finalize(stmt);
     } else {
@@ -345,6 +337,20 @@ static int is_wiki(struct http_string_s *target,
 
     buf = target->buf;
     size = target->len;
+
+    if (size == 5 || size == 6) {
+        if (!strncmp("/wiki", buf, 5)) {
+
+             if (size == 6 && buf[5] != '/') {
+                 return 0;
+             } else {
+                static const char *s = "index";
+                *name = s;
+                *len = 5;
+                return 1;
+             }
+        }
+    }
 
     if (size < 7) return 0; /* minimum: /wiki/N */
 
@@ -513,21 +519,19 @@ static void html_codeblock(void *ud,
                            const char *str,
                            size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* FILE *fp; */
-    /* size_t n; */
-    /* ex = ud; */
-    /* fp = ex->fp; */
 
-    /* fprintf(fp, "<pre><code>"); */
-    /* for (n = 0; n < sz; n++) { */
-    /*     switch (str[n]) { */
-    /*         default: */
-    /*             fputc(str[n], fp); */
-    /*             break; */
-    /*     } */
-    /* } */
-    /* fprintf(fp, "</pre></code>\n"); */
+    wws_parser_d *p;
+    size_t n;
+    p = ud;
+    wws_buffer_write(p->buf, "<pre><code>", 11);
+    for (n = 0; n < sz; n++) {
+        switch (str[n]) {
+            default:
+                wws_buffer_write(p->buf, &str[n], 1);
+                break;
+        }
+    }
+    wws_buffer_write(p->buf, "</pre></code>", 13);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
