@@ -327,7 +327,6 @@ static int is_wiki(struct http_string_s *target,
                    const char **name,
                    int *len)
 {
-    /* TODO: implement */
     const char *buf;
     int size;
     int pos;
@@ -343,8 +342,8 @@ static int is_wiki(struct http_string_s *target,
 
     pos = 1; /* skip first whack */
 
-
-    if (!strcmp(&buf[pos], "wiki/")) return 0;
+    /* for some reason, "wiki/" must be first */
+    if (strncmp("wiki/", &buf[pos], 5)) return 0;
 
     pos += 5;
 
