@@ -333,12 +333,10 @@ static int is_wiki(struct http_string_s *target,
 
     *len = 0;
 
-
     buf = target->buf;
     size = target->len;
 
     if (size < 7) return 0; /* minimum: /wiki/N */
-
 
     pos = 1; /* skip first whack */
 
