@@ -697,12 +697,32 @@ void wws_buffer_write(wws_buffer *wb,
                       int size)
 {
     int i;
-    if (wb->pos >= wb->size) return;
+    if (wb->pos >= wb->size) {
+       wws_buffer_extend(wb, 512);
+    }
     for (i = 0; i < size; i++) {
         wb->buf[wb->pos] = buf[i];
         wb->pos++;
-        if (wb->pos >= wb->size) break;
+        if (wb->pos >= wb->size) {
+            wws_buffer_extend(wb, 512);
+        }
     }
+}
+#+END_SRC
+
+Extending a buffer is done via =wws_buffer_extend=. This is
+done automatically inside of =wws_buffer_write=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wws_buffer_extend(wws_buffer *wb, int amount);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void wws_buffer_extend(wws_buffer *wb, int amount)
+{
+     wb->size += amount;
+     wb->buf = realloc(wb->buf, wb->size);
 }
 #+END_SRC
 * Janet CallBacks
