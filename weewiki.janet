@@ -28,7 +28,6 @@
 
 (defn html-footer
   []
-  (print (os/cwd))
   (print
 ``
 </div>
