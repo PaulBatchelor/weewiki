@@ -163,12 +163,18 @@ ww->ud = NULL;
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void * weewiki_ud(weewiki_d *ww);
+void weewiki_ud_set(weewiki_d *ww, void *ud);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
 void * weewiki_ud(weewiki_d *ww)
 {
     return ww->ud;
+}
+
+void weewiki_ud_set(weewiki_d *ww, void *ud)
+{
+    ww->ud = ud;
 }
 #+END_SRC
 *** Global Parser Callback
@@ -198,6 +204,56 @@ void weewiki_parse_set(weewiki_d *ww,
                                      unsigned int))
 {
     ww->parse = parse;
+}
+#+END_SRC
+*** Global Printer Callback
+This one is used anytime Janet wishes to print
+something directly (usually HTML).
+#+NAME: contents
+#+BEGIN_SRC c
+void (*print)(weewiki_d *, const char *, unsigned int);
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+ww->print = NULL;
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_print(weewiki_d *ww,
+                   const char *str,
+                   unsigned int sz);
+void weewiki_print_set(weewiki_d *ww,
+                       void (*print)(weewiki_d *,
+                                     const char *,
+                                     unsigned int));
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_print(weewiki_d *ww,
+                   const char *str,
+                   unsigned int sz)
+{
+    if (ww->print == NULL) {
+        FILE *f;
+        int i;
+        f = ww->fp;
+        for (i = 0; i < sz; ++i) {
+            putc(str[i], f);
+        }
+        f = weewiki_fp(ww);
+    } else {
+        ww->print(ww, str, sz);
+    }
+}
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_print_set(weewiki_d *ww,
+                       void (*print)(weewiki_d *,
+                                     const char *,
+                                     unsigned int))
+{
+    ww->print = print;
 }
 #+END_SRC
 ** Init

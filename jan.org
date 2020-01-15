@@ -38,21 +38,17 @@ static Janet cfun_io_print(int32_t argc, Janet *argv);
 #+BEGIN_SRC c
 static Janet cfun_io_print(int32_t argc, Janet *argv)
 {
-    int32_t j, len;
+    int32_t len;
     int32_t i;
     weewiki_d *ww;
-    FILE *f;
 
     ww = weewiki_get();
-    f = weewiki_fp(ww);
     for (i = 0; i < argc; ++i) {
         const uint8_t *vstr = janet_to_string(argv[i]);
         len = janet_string_length(vstr);
-        for (j = 0; j < len; ++j) {
-            putc(vstr[j], f);
-        }
+        weewiki_print(ww, (const char *)vstr, len);
     }
-    putc('\n', f);
+    weewiki_print(ww, "\n", 1);
     return janet_wrap_nil();
 }
 #+END_SRC

@@ -67,6 +67,10 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     wwserver_d wws;
     wws.ww = ww;
     weewiki_init(ww);
+    weewiki_set(ww);
+    weewiki_parse_set(ww, parse_org);
+    weewiki_print_set(ww, printer);
+    weewiki_ud_set(ww, NULL);
     weewiki_open(ww, "a.db");
     wwserver_init(&wws, 8080);
     wwserver_global_set(&wws);
@@ -192,6 +196,7 @@ typedef struct {
     orgparse *op;
     orgparse_state *state;
     wws_buffer *buf;
+    wwserver_d *wws;
 } wws_parser_d;
 #+END_SRC
 
@@ -207,6 +212,11 @@ static void handle_request(struct http_request_s* request)
     int len;
     wws = wwserver_global_get();
     target = http_request_target(request);
+
+    printf("Request: ");
+    fwrite(target.buf, 1, target.len, stdout);
+    printf("\n");
+    fflush(stdout);
 
     if (wws == NULL) return;
 
@@ -245,18 +255,29 @@ static void handle_request(struct http_request_s* request)
             pd.op = op;
             pd.state = state;
             pd.buf = &buf;
+            pd.wws = wws;
             wws_orgparse_setup(op);
             http_response_header(response, "Content-Type", "text/html");
             http_response_status(response, 200);
+            weewiki_ud_set(wws->ww, &pd);
             /* wws_buffer_write(&buf, */
             /*                  sqlite3_column_text(stmt, 0), */
             /*                  sqlite3_column_bytes(stmt, 0)); */
+
+            janet_dostring(wws->env,
+                        (const unsigned char *)"(html-header)",
+                        NULL, NULL);
             orgparse_init_and_run(op,
                                   (const char *)sqlite3_column_text(stmt, 0),
                                   sqlite3_column_bytes(stmt, 0),
                                   &pd,
                                   state);
             orgparse_end(op, &pd, state);
+            janet_dostring(wws->env,
+                        (const unsigned char *)"(html-footer)",
+                        NULL, NULL);
+
+            weewiki_ud_set(wws->ww, NULL);
             free(op);
             free(state);
         }
@@ -424,18 +445,20 @@ static void html_bold(void *ud,
 #+BEGIN_SRC c
 orgparse_set_bold(op, html_bold);
 #+END_SRC
-** TODO Aux
+** DONE Aux
+CLOSED: [2020-01-15 Wed 15:40]
+- State "DONE"       from "TODO"       [2020-01-15 Wed 15:40]
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_aux(void *ud,
                      const char *str,
                      size_t sz)
 {
-    /* weewiki_export_d *ex; */
-    /* ex = ud; */
-    /* janet_dobytes(ex->env, */
-    /*               (const uint8_t *)str, sz, */
-    /*               NULL, NULL); */
+    wws_parser_d *p;
+    p = ud;
+    janet_dobytes(p->wws->env,
+                  (const uint8_t *)str, sz,
+                  NULL, NULL);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -669,5 +692,56 @@ void wws_buffer_write(wws_buffer *wb,
         wb->pos++;
         if (wb->pos >= wb->size) break;
     }
+}
+#+END_SRC
+* WIP Janet CallBacks
+** DONE Org Parser Callback for Janet
+CLOSED: [2020-01-15 Wed 15:40]
+- State "DONE"       from "WIP"        [2020-01-15 Wed 15:40]
+Callback to be used by Janet function.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void parse_org(weewiki_d *w,
+                      const char *str,
+                      unsigned int sz);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void parse_org(weewiki_d *w,
+                      const char *str,
+                      unsigned int sz)
+{
+    orgparse_state_flags *f;
+    orgparse_state *state;
+    wws_parser_d *pd;
+
+    pd = weewiki_ud(w);
+    if (pd == NULL) return;
+    state = calloc(1, orgparse_state_size());
+    orgparse_state_init(state, pd->op, str, sz, pd);
+    f = orgparse_state_flags_get(pd->state);
+    orgparse_state_flags_set(state, f);
+    orgparse_state_run(state);
+    free(state);
+}
+#+END_SRC
+** Print Callback for Janet
+Anytime Janet calls print, this is what happens.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void printer(weewiki_d *w,
+                    const char *str,
+                    unsigned int sz);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static void printer(weewiki_d *w,
+                    const char *str,
+                    unsigned int sz)
+{
+    wws_parser_d *pd;
+    pd = weewiki_ud(w);
+    if (pd == NULL) return;
+    wws_buffer_write(pd->buf, str, sz);
 }
 #+END_SRC

@@ -5,7 +5,7 @@
   (org
    (string
     "[["
-    (string webroot "/" link ".html")
+    (string webroot "/" link)
     "]["
     name
     "]]")))
@@ -28,6 +28,7 @@
 
 (defn html-footer
   []
+  (print (os/cwd))
   (print
 ``
 </div>
