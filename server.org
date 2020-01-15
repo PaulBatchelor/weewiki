@@ -34,8 +34,7 @@ The top level files are contained the the files
 <<static_funcdefs>>
 <<functions>>
 #+END_SRC
-* DONE Top Level Function (weewiki_server)
-CLOSED: [2020-01-12 Sun 17:27]
+* Top Level Function (weewiki_server)
 The top-level function for this is =weewiki_server=. Since
 this is a command line program, it takes in =argc= and
 =argv= as arguments.
@@ -691,9 +690,9 @@ void wws_buffer_write(wws_buffer *wb,
     }
 }
 #+END_SRC
-* WIP Janet CallBacks
-** DONE Org Parser Callback for Janet
-CLOSED: [2020-01-15 Wed 15:40]
+* Janet CallBacks
+** Org Parser Callback for Janet
+- State "DONE"       from "DONE"       [2020-01-15 Wed 17:06]
 - State "DONE"       from "WIP"        [2020-01-15 Wed 15:40]
 Callback to be used by Janet function.
 #+NAME: static_funcdefs
