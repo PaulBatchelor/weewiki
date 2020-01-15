@@ -112,9 +112,14 @@ if (ww->db != NULL) {
     weewiki_close(ww);
 }
 #+END_SRC
+The function =weewiki_db= will only be included if the
+SQLite header is included as well. The janet interface for
+instance, is not using this so why bother including it.
 #+NAME: funcdefs
 #+BEGIN_SRC c
+#ifdef SQLITE3_H
 sqlite3* weewiki_db(weewiki_d *ww);
+#endif
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
@@ -144,24 +149,55 @@ FILE * weewiki_fp(weewiki_d *ww)
     else return ww->fp;
 }
 #+END_SRC
-*** Global Exporter
+*** Global User Data
+Used for the exporter org parser now, but will eventually be
+utilized for the server parser.
 #+NAME: contents
 #+BEGIN_SRC c
-weewiki_export_d *ex;
+void *ud;
 #+END_SRC
 #+NAME: init
 #+BEGIN_SRC c
-ww->ex = NULL;
+ww->ud = NULL;
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c
-weewiki_export_d * weewiki_ex(weewiki_d *ww);
+void * weewiki_ud(weewiki_d *ww);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-weewiki_export_d * weewiki_ex(weewiki_d *ww)
+void * weewiki_ud(weewiki_d *ww)
 {
-    return ww->ex;
+    return ww->ud;
+}
+#+END_SRC
+*** Global Parser Callback
+Used in particular by Janet. Takes in weewiki data,
+text, and text size.
+#+NAME: contents
+#+BEGIN_SRC c
+void (*parse)(weewiki_d *, const char *, unsigned int);
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+ww->parse = NULL;
+#+END_SRC
+Can be set using =weewiki_parse_set=.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_parse_set(weewiki_d *ww,
+                       void (*parse)(weewiki_d *,
+                                     const char *,
+                                     unsigned int));
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_parse_set(weewiki_d *ww,
+                       void (*parse)(weewiki_d *,
+                                     const char *,
+                                     unsigned int))
+{
+    ww->parse = parse;
 }
 #+END_SRC
 ** Init
@@ -413,7 +449,8 @@ void weewiki_clear(weewiki_d *ww)
 }
 #+END_SRC
 ** Parsing
-See the Export section.
+See the Export section. That's where all the action
+is happening related to orgparse.
 * Database
 ** Open
 A database is opened with =weewiki_open=.
@@ -1605,7 +1642,7 @@ static void write_single_file(weewiki_d *ww,
 
     ex->fp = mkfile(dir, NULL);
     ww->fp = ex->fp;
-    ww->ex = ex;
+    ww->ud = ex;
 
     write_file(ex,
                sqlite3_column_text(stmt, 0),
@@ -1648,7 +1685,7 @@ static void write_multiple_files(weewiki_d *ww,
         ex->fp = mkfile(dir,
                         sqlite3_column_text(stmt, 0));
         ww->fp = ex->fp;
-        ww->ex = ex;
+        ww->ud = ex;
         if (ex->fp != NULL) {
             fprintf(stdout, "Writing %s\n", key);
             write_file(ex,
@@ -1694,15 +1731,22 @@ void weewiki_janet_org(weewiki_d *ww,
                        const char *txt,
                        unsigned int len);
 #+END_SRC
-For now, this just calls =weewiki_export_continue=, but the
-idea is to replace this with a user-defined callback.
+By default, this just calls =weewiki_export_continue=,
+otherwise, it calls the custom callback.
 #+NAME: functions
 #+BEGIN_SRC c
 void weewiki_janet_org(weewiki_d *ww,
                        const char *txt,
                        unsigned int len)
 {
-    weewiki_export_continue(ww->ex, txt, len);
+
+    if (ww->parse == NULL) {
+        weewiki_export_d *ex;
+        ex = ww->ud;
+        weewiki_export_continue(ex, txt, len);
+    } else {
+        ww->parse(ww, txt, len);
+    }
 }
 #+END_SRC
 * Janet
@@ -1893,7 +1937,7 @@ static int p_parse(int argc, char *argv[])
 
     ex.fp = stdout;
     ww.fp = ex.fp;
-    ww.ex = &ex;
+    ww.ud = &ex;
 
     fseek(fp, 0, SEEK_END);
     sz = ftell(fp);
