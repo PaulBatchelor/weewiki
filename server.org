@@ -73,8 +73,10 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
 
     if (argc >= 2) {
         weewiki_open(ww, argv[1]);
+        wws.use_sqlar = 1;
     } else {
         weewiki_open(ww, "a.db");
+        wws.use_sqlar = 0;
     }
 
     if (argc >= 3) {
@@ -116,6 +118,7 @@ struct wwserver_d {
     struct http_server_s *server;
     weewiki_d *ww;
     JanetTable *env;
+    int use_sqlar;
 };
 #+END_SRC
 ** WIP global data setters/getters
@@ -159,6 +162,7 @@ int wwserver_init(wwserver_d *wws, int port)
     wws->server = http_server_init(port, handle_request);
     wws->env = weewiki_janet_setup();
     weewiki_janet_loadconfig(wws->env);
+    wws->use_sqlar = 0;
     return 1;
 }
 #+END_SRC
@@ -293,6 +297,8 @@ static void handle_request(struct http_request_s* request)
         http_respond(request, response);
         wws_buffer_free(&buf);
         sqlite3_finalize(stmt);
+    } else if (wws_find_and_serve(wws, request, &target)) {
+        return;
     } else {
         struct http_response_s* response = http_response_init();
         http_response_status(response, 404);
@@ -774,5 +780,188 @@ static void printer(weewiki_d *w,
     pd = weewiki_ud(w);
     if (pd == NULL) return;
     wws_buffer_write(pd->buf, str, sz);
+}
+#+END_SRC
+* WIP Opening Files
+The weewiki server is able to serve files like HTML and CSS
+in addition parsing org wiki pages. It looks for a file
+after checking for a wiki page.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wws_find_and_serve(wwserver_d *wws,
+                       struct http_request_s *request,
+                       struct http_string_s *str);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+<<mime_type_table>>
+int wws_find_and_serve(wwserver_d *wws,
+                       struct http_request_s *request,
+                       struct http_string_s *str)
+{
+    char *name;
+    int rc;
+    char *filebuf;
+    unsigned int filesize;
+    struct http_response_s* response;
+
+    filebuf = NULL;
+    filesize = 0;
+    response = NULL;
+
+    rc = 0;
+    /* copy URL to NULL terminated string */
+    name = calloc(1, str->len + 1);
+    /* skip the first '/' character */
+    strncpy(name, &str->buf[1], str->len - 1);
+
+    <<does_file_exist>>
+
+    response = http_response_init();
+
+    <<find_mime_type>>
+    <<load_file_into_memory>>
+    <<serve_the_file>>
+
+    cleanup:
+
+    if (response != NULL) free(response);
+    if (filebuf != NULL) free(filebuf);
+    free(name);
+    return rc;
+}
+#+END_SRC
+
+The process of loading a file is as follows:
+
+See if the URL points to an existing file. If it does not
+exist, return. The process of this will vary based on if
+sqlar mode is enabled.
+
+#+NAME: does_file_exist
+#+BEGIN_SRC c
+if (wws->use_sqlar) {
+    /* TODO: implement */
+    rc = 0;
+    goto cleanup;
+} else {
+    if (access(name, F_OK) != -1) {
+        /* Found the file! */
+    } else {
+        rc = 0;
+        goto cleanup;
+    }
+}
+#+END_SRC
+
+The file extension of the file is found. This is used to
+determine + set the MIME type in the HTTP request.
+
+#+NAME: find_mime_type
+#+BEGIN_SRC c
+{
+    unsigned int sz;
+    unsigned int i;
+    unsigned int ext_pos;
+    sz = 0;
+    ext_pos = 0;
+    <<get_extension>>
+    <<mime_lookup>>
+}
+#+END_SRC
+
+The file extension is found by starting at the end of the
+URL, and working backwards until the first '.' is found. If
+no extension is found, the MIME type is skipped I guess?
+
+#+NAME: get_extension
+#+BEGIN_SRC c
+for (i = str->len; i > 0; --i) {
+    sz++;
+    if (str->buf[i - 1] == '.') {
+        ext_pos = i - 1;
+        break;
+    }
+}
+
+#+END_SRC
+
+The mime type strings are set via a linear table lookup.
+
+#+NAME: mime_type_table
+#+BEGIN_SRC c
+typedef struct {
+    const char *extension;
+    const char *mime_type;
+} mime_map;
+
+mime_map mime_table [] = {
+    {".css", "text/css"},
+    {".gif", "image/gif"},
+    {".htm", "text/html"},
+    {".html", "text/html"},
+    {".jpeg", "image/jpeg"},
+    {".jpg", "image/jpeg"},
+    {".ico", "image/x-icon"},
+    {".js", "application/javascript"},
+    {".pdf", "application/pdf"},
+    {".mp4", "video/mp4"},
+    {".png", "image/png"},
+    {".svg", "image/svg+xml"},
+    {".xml", "text/xml"},
+    {NULL, NULL},
+};
+#+END_SRC
+
+#+NAME: mime_lookup
+#+BEGIN_SRC c
+i = 0;
+while (1) {
+    if (mime_table[i].extension == NULL) break;
+    if (!strncmp(mime_table[i].extension,
+                 &str->buf[ext_pos],
+                 sz)) {
+        http_response_header(response,
+                             "Content-Type",
+                             mime_table[i].mime_type);
+        break;
+    }
+    i++;
+}
+#+END_SRC
+
+The file is loaded into memory. The process of this will
+vary based on if sqlar is enabled.
+
+#+NAME: load_file_into_memory
+#+BEGIN_SRC c
+if (wws->use_sqlar) {
+    /* TODO: implement */
+    rc = 0;
+    goto cleanup;
+} else {
+    FILE *fp;
+
+    fp = fopen(name, "r");
+    fseek(fp, 0, SEEK_END);
+    filesize = ftell(fp);
+
+    fseek(fp, 0, SEEK_SET);
+
+    filebuf = calloc(1, filesize + 1);
+    fread(filebuf, 1, filesize, fp);
+}
+#+END_SRC
+
+After all this is done, the http request is completed.
+
+#+NAME: serve_the_file
+#+BEGIN_SRC c
+{
+    http_response_body(response, filebuf, filesize);
+    http_respond(request, response);
+    rc = 1;
+    response = NULL;
 }
 #+END_SRC
