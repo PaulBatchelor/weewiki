@@ -1729,7 +1729,8 @@ static void write_multiple_files(weewiki_d *ww,
 
     sqlite3_prepare_v2(db,
                         "SELECT key, value "
-                        "FROM wiki;",
+                        "FROM wiki "
+                        "WHERE key NOT LIKE \"@%\";",
                         -1,
                         &stmt,
                         NULL);
