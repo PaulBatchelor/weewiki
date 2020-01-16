@@ -590,6 +590,46 @@ int weewiki_getter(weewiki_d *ww, const char *key)
     return 0;
 }
 #+END_SRC
+** Get
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_setter(weewiki_d *ww,
+                   const char *key,
+                   const char *val);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_setter(weewiki_d *ww,
+                   const char *key,
+                   const char *val)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    db = ww->db;
+    sqlite3_prepare_v2(db,
+                       "SELECT value FROM wiki WHERE(key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_prepare_v2(db,
+                       "INSERT OR REPLACE INTO wiki"
+                       "(key, value)\n"
+                       "VALUES(?1,?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    sqlite3_bind_text(stmt, 2, val, -1, NULL);
+
+    sqlite3_step(stmt);
+
+    sqlite3_finalize(stmt);
+    return 0;
+}
+#+END_SRC
 ** Create Tables
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -2035,7 +2075,7 @@ static int p_get(int argc, char *argv[])
     int rc;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s file.org\n", argv[0]);
+        fprintf(stderr, "Usage: %s page\n", argv[0]);
         return 1;
     }
 
@@ -2043,6 +2083,43 @@ static int p_get(int argc, char *argv[])
     weewiki_open(&ww, "a.db");
 
     rc = weewiki_getter(&ww, argv[1]);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+
+    return rc;
+}
+#+END_SRC
+* Set
+Gets a page and prints it to standard output.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "set", 3)) {
+    argc--;
+    argv++;
+    return p_set(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_set(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_set(int argc, char *argv[])
+{
+    weewiki_d ww;
+    int rc;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s page value\n", argv[0]);
+        return 1;
+    }
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, "a.db");
+
+    rc = weewiki_setter(&ww, argv[1], argv[2]);
 
     weewiki_close(&ww);
     weewiki_clean(&ww);
