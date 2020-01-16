@@ -72,8 +72,15 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     weewiki_ud_set(ww, NULL);
 
     if (argc >= 2) {
-        weewiki_open(ww, argv[1]);
-        wws.use_sqlar = 1;
+        if (argv[1][0] == '-') {
+            /* '-' effectively skips this argument */
+            /* needed if one wants to set the port only */
+            weewiki_open(ww, "a.db");
+            wws.use_sqlar = 0;
+        } else {
+            weewiki_open(ww, argv[1]);
+            wws.use_sqlar = 1;
+        }
     } else {
         weewiki_open(ww, "a.db");
         wws.use_sqlar = 0;
