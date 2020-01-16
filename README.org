@@ -1,6 +1,62 @@
 #+TITLE: WeeWiki
-
 WeeWiki is a wee little wiki engine used to generate
 personal wikis and mind maps.
+* Building
+WeeWiki is written in a literate style, and requires
+[[https://github.com/paulbatchelor/worgle][Worgle]] to
+tangle files into C code. Make sure SQLite is installed
+as well.
 
-This is very much a work in progress.
+WeeWiki can be built using the command "make". It
+can then be installed using "sudo make install".
+* QuickStart
+To make a new page called foo:
+
+#+BEGIN_SRC sh
+weewiki add foo
+#+END_SRC
+
+Then, set foo to be some text:
+
+#+BEGIN_SRC sh
+weewiki set foo "here is a page callled foo"
+#+END_SRC
+
+If one desires to edit the page in the text editor
+defined by =$EDITOR=:
+
+#+BEGIN_SRC sh
+weewiki edit foo
+#+END_SRC
+
+Save + close, and this will update the page.
+
+To upload this README to be the homepage:
+
+#+BEGIN_SRC sh
+weewiki push README.org index
+#+END_SRC
+
+By default, wiki writes to =_site/weewiki=, so make sure
+this directory exists:
+
+#+BEGIN_SRC sh
+mkdir -p _site/wiki
+#+END_SRC
+
+List all the pages with
+
+#+BEGIN_SRC sh
+weewiki ls
+#+END_SRC
+
+Export all the pages to HTML with:
+
+#+BEGIN_SRC sh
+weewiki export
+#+END_SRC
+
+And there now should be some HTML content written to
+=_site/wiki=. Setting a http fileserver to point to =_site=,
+one can see the generated homepage =/wiki=, and the foo page
+=/wiki/foo=.
