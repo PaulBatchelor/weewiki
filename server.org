@@ -100,12 +100,16 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     return 1;
 }
 #+END_SRC
-* WIP Main Data
+* DONE Main Data
+CLOSED: [2020-01-16 Thu 18:16]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:16]
 - State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
 This is stuff that gets instantiated at startup.
 For now, this is probably just the database, though
 this could change.
-** WIP Struct
+** DONE Struct
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
 #+NAME: typedefs
 #+BEGIN_SRC c
@@ -121,7 +125,9 @@ struct wwserver_d {
     int use_sqlar;
 };
 #+END_SRC
-** WIP global data setters/getters
+** DONE global data setters/getters
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: global_data
 #+BEGIN_SRC c
@@ -149,7 +155,9 @@ static wwserver_d * wwserver_global_get(void)
     return WWS;
 }
 #+END_SRC
-** WIP Startup
+** DONE Startup
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -166,7 +174,9 @@ int wwserver_init(wwserver_d *wws, int port)
     return 1;
 }
 #+END_SRC
-** WIP Cleanup
+** DONE Cleanup
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:30]
 Database is closed. May need to figure out how to cleanly
 break out of loop.
@@ -185,7 +195,9 @@ void wwserver_clean(wwserver_d *wws)
     /* weewiki data gets cleaned elsewhere */
 }
 #+END_SRC
-* WIP Handle Request Callback
+* DONE Handle Request Callback
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:34]
 The http server library has a single callback entry point.
 
@@ -376,7 +388,9 @@ static int is_wiki(struct http_string_s *target,
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
-* WIP HTML buffer callbacks
+* DONE HTML buffer callbacks
+CLOSED: [2020-01-16 Thu 18:16]
+- State "DONE"       from "WIP"        [2020-01-16 Thu 18:16]
 - State "WIP"        from "TODO"       [2020-01-14 Tue 14:55]
 Instead of writing to a file, HTML is written to a buffer.
 This buffer is allocated/freed inside the request callback,
@@ -518,7 +532,9 @@ static void html_code(void *ud,
 #+BEGIN_SRC c
 orgparse_set_code(op, html_code);
 #+END_SRC
-** TODO Code Block
+** DONE Code Block
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "TODO"       [2020-01-16 Thu 18:15]
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_codeblock(void *ud,
@@ -544,13 +560,17 @@ static void html_codeblock(void *ud,
 #+BEGIN_SRC c
 orgparse_set_codeblock(op, html_codeblock);
 #+END_SRC
-** TODO Name
+** DONE Name
+CLOSED: [2020-01-16 Thu 18:15]
+- State "DONE"       from "TODO"       [2020-01-16 Thu 18:15]
+Ignored for now.
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_name(void *ud,
                            const char *str,
                            size_t sz)
 {
+    /* Ignored for now */
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
