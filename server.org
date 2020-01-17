@@ -422,6 +422,8 @@ void wws_orgparse_setup(orgparse *op)
 }
 #+END_SRC
 ** Header
+Since =<h1>= is only reserved for titles, make all
+the header sizes one level smaller.
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_header(void *ud,
@@ -433,10 +435,10 @@ static void html_header(void *ud,
     char tmp[16];
     int tmp_sz;
     p = ud;
-    tmp_sz = sprintf(tmp, "\n<h%d>", lvl);
+    tmp_sz = sprintf(tmp, "\n<h%d>", lvl + 1);
     wws_buffer_write(p->buf, tmp, tmp_sz);
     wws_buffer_write(p->buf, h, sz);
-    tmp_sz = sprintf(tmp, "</h%d>", lvl);
+    tmp_sz = sprintf(tmp, "</h%d>", lvl + 1);
     wws_buffer_write(p->buf, tmp, tmp_sz);
 }
 #+END_SRC

@@ -1159,13 +1159,13 @@ static int p_sync(int argc, char *argv[])
     weewiki_d ww;
     int rc;
 
-    if (access(argv[2], F_OK) != -1) {
-        fprintf(stderr, "%s: file exists.\n", argv[2]);
-        return 1;
-    }
-
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+
+    if (argc == 2) {
+        weewiki_open(&ww, argv[1]);
+    } else {
+        weewiki_open(&ww, "a.db");
+    }
 
     rc = weewiki_sync(&ww);
 
@@ -1398,6 +1398,8 @@ void weewiki_orgparse_setup(orgparse *op)
 }
 #+END_SRC
 *** Header
+Since =<h1>= is only reserved for titles, make all
+the header sizes one level smaller.
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_header(void *ud,
@@ -1410,9 +1412,9 @@ static void html_header(void *ud,
     ex = ud;
     fp = ex->fp;
     lvl++;
-    fprintf(fp, "\n<h%d>", lvl);
+    fprintf(fp, "\n<h%d>", lvl + 1);
     fwrite(h, 1, sz, fp);
-    fprintf(fp, "</h%d>\n\n", lvl);
+    fprintf(fp, "</h%d>\n\n", lvl + 1);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
