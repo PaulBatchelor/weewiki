@@ -1030,7 +1030,7 @@ static int p_link(int argc, char *argv[])
     force = 0;
     if (argc < 3) {
         fprintf(stderr,
-                "Usage: %s key file\n",
+                "Usage: %s key file [db]\n",
                 argv[0]);
         return 1;
     }
@@ -1049,7 +1049,12 @@ static int p_link(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+
+    if (argc >= 4) {
+        weewiki_open(&ww, argv[3]);
+    } else {
+        weewiki_open(&ww, "a.db");
+    }
 
     if (force) {
         rc = weewiki_push(&ww, argv[2], argv[1]);
