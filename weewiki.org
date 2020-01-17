@@ -545,7 +545,7 @@ void weewiki_close(weewiki_d *ww);
 #+BEGIN_SRC c
 void weewiki_close(weewiki_d *ww)
 {
-    sqlite3_close(ww->db);
+    if (ww->db != NULL) sqlite3_close(ww->db);
     ww->db = NULL;
 }
 #+END_SRC
@@ -953,6 +953,26 @@ else if (match(argv[1], len, "ls", 2)) {
 #+BEGIN_SRC c
 static int p_ls(int argc, char *argv[]);
 #+END_SRC
+You'll notice some duplicate code here. This has been
+introduced because of a change in behavior. The last
+parameter of "ls" can now specify the databse file name in
+place of "a.db". Because there are a variable number of
+arguments, there are a few permutations:
+
+No arguments will invoke the default ls behavior with
+"a.db".
+
+If there is one argument, it will either be "links", or
+a database name. "links" will list all the linked pages
+using "a.db". Any other value will invoke the default ls
+behavior using that as the database file name.
+
+Three arguments will invoke "ls links" with a custom
+database filename. If the second argument is not "links",
+it will return an error.
+
+The duplicate code is done for the sake of readability, and
+is used to make the edge cases above more clear-cut.
 #+NAME: functions
 #+BEGIN_SRC c
 static int list(void *ud, int sz, char **argv, char **col)
@@ -972,11 +992,11 @@ static int p_ls(int argc, char *argv[])
     int rc;
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
 
     rc = 0;
 
     if (argc == 1) {
+        weewiki_open(&ww, "a.db");
         sqlite3_exec(ww.db,
                     "SELECT key FROM wiki;",
                     list,
@@ -984,15 +1004,33 @@ static int p_ls(int argc, char *argv[])
                     NULL);
     } else if (argc == 2) {
         if (!strcmp(argv[1], "links")) {
+            weewiki_open(&ww, "a.db");
             sqlite3_exec(ww.db,
                         "SELECT key, filename FROM wikilinks;",
                         list,
                         NULL,
                         NULL);
         } else {
-            fprintf(stderr, 
-                    "Invalid command '%s'\n",
+            weewiki_open(&ww, argv[1]);
+            sqlite3_exec(ww.db,
+                        "SELECT key FROM wiki;",
+                        list,
+                        NULL,
+                        NULL);
+        }
+    } else if (argc == 3) {
+        rc = 1;
+        if (!strcmp(argv[1], "links")) {
+            weewiki_open(&ww, argv[2]);
+            sqlite3_exec(ww.db,
+                        "SELECT key, filename FROM wikilinks;",
+                        list,
+                        NULL,
+                        NULL);
+        } else {
+            fprintf(stderr, "Invalid command '%s'\n",
                     argv[1]);
+            fprintf(stderr, "Expected 'links'.\n");
             rc = 1;
         }
     }
