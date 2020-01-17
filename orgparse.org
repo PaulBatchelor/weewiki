@@ -245,7 +245,7 @@ static void test_link(void *ud,
 {
     printf("link_ref: '");
     fwrite(link, 1, link_sz, stdout);
-    printf("'', '");
+    printf("', '");
     fwrite(name, 1, name_sz, stdout);
     printf("'\n");
 }
@@ -1103,6 +1103,68 @@ static int test_nlformpe(void)
     } else if (x.cnt != 1) {
         printf("Unexpected number of paragraphs: %d",
                x.cnt);
+    }
+
+    return rc;
+}
+#+END_SRC
+*** TODO Paragraphs ending with link causes newline
+This text:
+#+BEGIN_SRC text
+[[link]]
+
+[[link]]
+#+END_SRC
+
+Causes the following to happen
+#+BEGIN_SRC text
+PARAGRAPH BEGIN
+link_ref: 'link', 'link'
+PARAGRAPH END
+newline
+PARAGRAPH BEGIN
+link_ref: 'link', 'link'
+PARAGRAPH END
+#+END_SRC
+
+The "newline" shouldn't be there. The test define below runs
+this text through the parser and sees if the newline
+callback gets called. If it does, the test has failed.
+
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Paragraph ending with link causes newline", test_linknl},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static void linknl_nl(void *ud,
+                      const char *dumb,
+                      size_t dumbr)
+{
+    int *x;
+    x = ud;
+    *x = *x + 1; /* *x++ works too? */
+}
+
+static int test_linknl(void)
+{
+    orgparse op;
+    int rc;
+    int cnt;
+
+    const char *txt = "[[link]]\n\n[[link]]";
+    cnt = 0;
+
+    rc = OK;
+    orgparse_init(&op);
+
+    orgparse_set_newline(&op, linknl_nl);
+
+    orgparse_run(&op, txt, strlen(txt), &cnt);
+
+    if (cnt != 0) {
+        printf("Found a newline. Oops.\n");
+        rc = FAIL;
     }
 
     return rc;
