@@ -23,6 +23,9 @@ The top level files are contained the the files
 #+BEGIN_SRC c :tangle server.c
 #include <stdio.h>
 #include <sqlite3.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #define HTTPSERVER_IMPL
 #include "httpserver.h/httpserver.h"
 #include "orgparse.h"
@@ -875,6 +878,10 @@ See if the URL points to an existing file. If it does not
 exist, return. The process of this will vary based on if
 sqlar mode is enabled.
 
+Additional work must be done to check if the file is a
+directory or not. If this doesn't happen, then the program
+continues as usual and a segfault occurs.
+
 #+NAME: does_file_exist
 #+BEGIN_SRC c
 if (wws->use_sqlar) {
@@ -883,7 +890,13 @@ if (wws->use_sqlar) {
     goto cleanup;
 } else {
     if (access(name, F_OK) != -1) {
-        /* Found the file! */
+        /* Check if non-file (like a directory) */
+        struct stat path_stat;
+        stat(name, &path_stat);
+        if (!S_ISREG(path_stat.st_mode)) {
+            rc = 0;
+            goto cleanup;
+        }
     } else {
         rc = 0;
         goto cleanup;
