@@ -327,7 +327,7 @@ static void handle_request(struct http_request_s* request)
     }
 }
 #+END_SRC
-* DONE URL Parser
+* DONE URL Parser (is_wiki)
 CLOSED: [2020-01-14 Tue 10:30]
 - State "DONE"       from "WIP"        [2020-01-14 Tue 10:30]
 - State "WIP"        from "TODO"       [2020-01-14 Tue 10:18]
@@ -357,19 +357,26 @@ static int is_wiki(struct http_string_s *target,
     const char *buf;
     int size;
     int pos;
+    static const char *s = "index";
 
     *len = 0;
 
+    /* '/' defaults to index */
     buf = target->buf;
     size = target->len;
 
+    if (size == 1) {
+        *name = s;
+        *len = 5;
+        return 1;
+    }
+
+    /* '/wiki' or '/wiki/' defaults to index */
     if (size == 5 || size == 6) {
         if (!strncmp("/wiki", buf, 5)) {
-
              if (size == 6 && buf[5] != '/') {
                  return 0;
              } else {
-                static const char *s = "index";
                 *name = s;
                 *len = 5;
                 return 1;
