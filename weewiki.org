@@ -590,7 +590,7 @@ int weewiki_getter(weewiki_d *ww, const char *key)
     return 0;
 }
 #+END_SRC
-** Get
+** Set
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int weewiki_setter(weewiki_d *ww,

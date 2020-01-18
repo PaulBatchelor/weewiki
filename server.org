@@ -27,6 +27,7 @@ The top level files are contained the the files
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 #define HTTPSERVER_IMPL
 #include "httpserver.h/httpserver.h"
 #include "orgparse.h"
@@ -75,6 +76,12 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     weewiki_print_set(ww, printer);
     weewiki_ud_set(ww, NULL);
 
+    if (argc >= 3) {
+        wwserver_init(&wws, atoi(argv[2]));
+    } else {
+        wwserver_init(&wws, 8080);
+    }
+
     if (argc >= 2) {
         if (argv[1][0] == '-') {
             /* '-' effectively skips this argument */
@@ -90,10 +97,11 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
         wws.use_sqlar = 0;
     }
 
-    if (argc >= 3) {
-        wwserver_init(&wws, atoi(argv[2]));
+    if (wws.use_sqlar) {
+        weewiki_janet_loadconfig(wws.env);
     } else {
-        wwserver_init(&wws, 8080);
+        weewiki_janet_loadconfig_internal(wws.env, wws.ww);
+
     }
 
     wwserver_global_set(&wws);
@@ -181,7 +189,6 @@ int wwserver_init(wwserver_d *wws, int port)
 {
     wws->server = http_server_init(port, handle_request);
     wws->env = weewiki_janet_setup();
-    weewiki_janet_loadconfig(wws->env);
     wws->use_sqlar = 0;
     return 1;
 }
@@ -846,6 +853,7 @@ int wws_find_and_serve(wwserver_d *wws,
     char *filebuf;
     unsigned int filesize;
     struct http_response_s* response;
+    sqlite3 *db;
 
     filebuf = NULL;
     filesize = 0;
@@ -855,6 +863,8 @@ int wws_find_and_serve(wwserver_d *wws,
     /* copy URL to NULL terminated string */
     name = calloc(1, str->len + 1);
     /* skip the first '/' character */
+
+    db = weewiki_db(wws->ww);
     strncpy(name, &str->buf[1], str->len - 1);
 
     <<does_file_exist>>
@@ -887,9 +897,10 @@ continues as usual and a segfault occurs.
 #+NAME: does_file_exist
 #+BEGIN_SRC c
 if (wws->use_sqlar) {
-    /* TODO: implement */
-    rc = 0;
-    goto cleanup;
+    if (!sqlar_file_exists(db, name)) {
+        rc = 0;
+        goto cleanup;
+    }
 } else {
     if (access(name, F_OK) != -1) {
         /* Check if non-file (like a directory) */
@@ -988,9 +999,15 @@ vary based on if sqlar is enabled.
 #+NAME: load_file_into_memory
 #+BEGIN_SRC c
 if (wws->use_sqlar) {
-    /* TODO: implement */
-    rc = 0;
-    goto cleanup;
+    int sqlite_rc;
+    sqlite_rc = sqlar_extract_to_buffer(db,
+                                        name,
+                                        &filebuf,
+                                        &filesize);
+    if (sqlite_rc != SQLITE_OK) {
+        rc = 0;
+        goto cleanup;
+    }
 } else {
     FILE *fp;
 
@@ -1014,5 +1031,117 @@ After all this is done, the http request is completed.
     http_respond(request, response);
     rc = 1;
     response = NULL;
+}
+#+END_SRC
+* SQLar Operations
+** Check if file exists
+#+BEGIN_SRC sql
+SELECT EXISTS(SELECT name FROM sqlar WHERE NAME is ?1);
+#+END_SRC
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sqlar_file_exists(sqlite3 *db, const char *name);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int sqlar_file_exists(sqlite3 *db, const char *name)
+{
+    sqlite3_stmt *stmt;
+    int rc;
+
+    sqlite3_prepare(db,
+                    "SELECT "
+                    "EXISTS("
+                    "SELECT name FROM sqlar "
+                    "WHERE name is ?1"
+                    ");",
+                    -1,
+                    &stmt,
+                    NULL);
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+    sqlite3_step(stmt);
+    rc = sqlite3_column_int(stmt, 0);
+    sqlite3_finalize(stmt);
+    return rc;
+}
+#+END_SRC
+** Extract to buffer
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sqlar_extract_to_buffer(sqlite3 *db,
+                            const char *name,
+                            char **out,
+                            unsigned int *size);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int sqlar_extract_to_buffer(sqlite3 *db,
+                            const char *name,
+                            char **out,
+                            unsigned int *size)
+{
+    char *output;
+    unsigned long int out_size;
+    int rc;
+    sqlite3_stmt *stmt;
+    int sz;
+    const char *data;
+    int data_sz;
+
+    rc = sqlite3_exec(db,
+                      "CREATE TABLE IF NOT EXISTS sqlar(\n"
+                      "  name TEXT PRIMARY KEY,\n"
+                      "  mode INT,\n"
+                      "  mtime INT,\n"
+                      "  sz INT,\n"
+                      "  data BLOB\n"
+                      ");", 0, 0, 0);
+
+
+    sqlite3_prepare(db,
+                    "SELECT name, mode, mtime, sz, data FROM sqlar"
+                    " WHERE name is ?1",
+                    -1,
+                    &stmt,
+                    NULL);
+
+    sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+
+    rc = sqlite3_step(stmt);
+
+    if(rc != SQLITE_ROW) {
+        fprintf(stderr,
+                "SQLar: could find file %s\n",
+                name);
+        sqlite3_finalize(stmt);
+        sqlite3_close(db);
+        return rc;
+    }
+
+    sz = sqlite3_column_int(stmt,3);
+    data = sqlite3_column_blob(stmt,4);
+    data_sz = sqlite3_column_bytes(stmt,4);
+
+    output = calloc(1, sz + 1);
+    if(sz != data_sz) {
+        out_size = sz;
+
+        rc = uncompress((Bytef*)output,
+                        &out_size,
+                        (const Bytef*)data,
+                        data_sz);
+        if(rc != Z_OK) {
+            fprintf(stderr,
+                    "Error: could not uncompress data\n");
+            return SQLITE_ERROR;
+        }
+    } else {
+        memcpy(output, data, sz);
+    }
+
+    *size = sz;
+    *out = output;
+    sqlite3_finalize(stmt);
+    return SQLITE_OK;
 }
 #+END_SRC

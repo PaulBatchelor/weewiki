@@ -19,6 +19,7 @@ LIBS=-lsqlite3
 ifeq ($(WWSERVER), 1)
 CFLAGS += -DWWSERVER
 OBJ += server.o
+LIBS+=-lz
 endif
 
 C89=$(CC) --std=c89 -pedantic

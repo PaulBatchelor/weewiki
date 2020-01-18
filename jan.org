@@ -328,3 +328,41 @@ static Janet cfun_ww_db(int32_t argc, Janet *argv)
     return weewiki_return_db(weewiki_db(ww));
 }
 #+END_SRC
+* Load Janet config internally
+When the server is served from a file, the main config
+file is loaded from the SQLite database rather than
+from the file. It will attempt to look for the config
+file under the keyword =@config=.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_janet_loadconfig_internal(JanetTable *env,
+                                       weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_janet_loadconfig_internal(JanetTable *env,
+                                       weewiki_d *ww)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = weewiki_db(ww);
+    sqlite3_prepare_v2(db,
+                       "SELECT value FROM wiki WHERE(key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, "@config", -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc == SQLITE_ROW) {
+        janet_dostring(env,
+                       (const char *)sqlite3_column_text(stmt, 0),
+                       NULL, NULL);
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
