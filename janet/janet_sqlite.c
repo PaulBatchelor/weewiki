@@ -24,6 +24,7 @@
 #include "janet.h"
 
 #define FLAG_CLOSED 1
+#define FLAG_WEEWIKI 2
 
 #define MSG_DB_CLOSED "database already closed"
 
@@ -34,7 +35,8 @@ typedef struct {
 
 /* Close a db, noop if already closed */
 static void closedb(Db *db) {
-    if (!(db->flags & FLAG_CLOSED)) {
+    if (!(db->flags & FLAG_CLOSED) &&
+        !(db->flags & FLAG_WEEWIKI)) {
         db->flags |= FLAG_CLOSED;
         sqlite3_close_v2(db->handle);
     }
@@ -410,7 +412,7 @@ Janet weewiki_return_db(sqlite3 *sql)
 {
     Db *db = (Db *) janet_abstract(&sql_conn_type, sizeof(Db));
     db->handle = sql;
-    db->flags = 0;
+    db->flags = FLAG_WEEWIKI; /* hack to keep GC from closing */
     return janet_wrap_abstract(db);
 }
 
