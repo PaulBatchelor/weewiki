@@ -133,6 +133,10 @@ void weewiki_janet_cfuns(JanetTable *env)
               "ww-clear",
               janet_wrap_cfunction(cfun_ww_clear),
               NULL);
+    janet_def(env,
+              "ww-db",
+              janet_wrap_cfunction(cfun_ww_db),
+              NULL);
     weewiki_janet_sqlite(env);
     janet_dostring(env,
                     "(defn html-header () ())"
@@ -307,5 +311,20 @@ static Janet cfun_ww_clear(int32_t argc, Janet *argv)
     ww = weewiki_get();
     weewiki_clear(ww);
     return janet_wrap_nil();
+}
+#+END_SRC
+** Get Open Database
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_db(int32_t argc, Janet *argv);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+Janet weewiki_return_db(sqlite3 *sql);
+static Janet cfun_ww_db(int32_t argc, Janet *argv)
+{
+    weewiki_d *ww;
+    ww = weewiki_get();
+    return weewiki_return_db(weewiki_db(ww));
 }
 #+END_SRC

@@ -371,16 +371,16 @@ static Janet sql_conn_get(void *p, Janet key) {
 /*****************************************************************************/
 
 static const JanetReg cfuns[] = {
-    {"sqlite3/open", sql_open, 
+    {"sqlite3/open", sql_open,
         "(sqlite3/open path)\n\n"
         "Opens a sqlite3 database on disk. Returns the database handle if the database was opened "
         "successfully, and otheriwse throws an error."
     },
-    {"sqlite3/close", sql_close, 
+    {"sqlite3/close", sql_close,
         "(sqlite3/close db)\n\n"
         "Closes a database. Use this to free a database after use. Returns nil."
     },
-    {"sqlite3/eval", sql_eval, 
+    {"sqlite3/eval", sql_eval,
         "(sqlite3/eval db sql [,params])\n\n"
         "Evaluate sql in the context of database db. Multiple sql statements "
         "can be changed together, and optionally parameters maybe passed in. "
@@ -394,7 +394,7 @@ static const JanetReg cfuns[] = {
         "Will return an array of rows, where each row contains a table where columns names "
         "are keys for column values."
     },
-    {"sqlite3/last-insert-rowid", sql_last_insert_rowid, 
+    {"sqlite3/last-insert-rowid", sql_last_insert_rowid,
         "(sqlite3/last-insert-rowid db)\n\n"
         "Returns the id of the last inserted row."
     },
@@ -406,7 +406,14 @@ static const JanetReg cfuns[] = {
     {NULL, NULL, NULL}
 };
 
+Janet weewiki_return_db(sqlite3 *sql)
+{
+    Db *db = (Db *) janet_abstract(&sql_conn_type, sizeof(Db));
+    db->handle = sql;
+    db->flags = 0;
+    return janet_wrap_abstract(db);
+}
+
 void weewiki_janet_sqlite(JanetTable *env) {
     janet_cfuns(env, NULL, cfuns);
 }
-
