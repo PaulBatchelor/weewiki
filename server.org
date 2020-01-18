@@ -21,6 +21,7 @@ The top level files are contained the the files
 #+END_SRC
 #+NAME: server.c
 #+BEGIN_SRC c :tangle server.c
+#define _BSD_SOURCE /* to silence usleep warning */
 #include <stdio.h>
 #include <sqlite3.h>
 #include <sys/types.h>
@@ -102,6 +103,7 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
         http_server_listen_poll(wws.server);
         while (running) {
             http_server_poll(wws.server);
+            usleep(80);
         }
     }
     wwserver_clean(&wws);
