@@ -98,9 +98,9 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     }
 
     if (wws.use_sqlar) {
-        weewiki_janet_loadconfig(wws.env);
-    } else {
         weewiki_janet_loadconfig_internal(wws.env, wws.ww);
+    } else {
+        weewiki_janet_loadconfig(wws.env);
 
     }
 
