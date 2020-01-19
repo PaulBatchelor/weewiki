@@ -576,6 +576,12 @@ static void html_codeblock(void *ud,
     wws_buffer_write(p->buf, "<pre><code>", 11);
     for (n = 0; n < sz; n++) {
         switch (str[n]) {
+            case '<':
+                wws_buffer_write(p->buf, "&lt;", 4);
+                break;
+            case '>':
+                wws_buffer_write(p->buf, "&gt;", 4);
+                break;
             default:
                 wws_buffer_write(p->buf, &str[n], 1);
                 break;
