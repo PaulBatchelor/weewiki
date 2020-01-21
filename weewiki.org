@@ -1531,6 +1531,12 @@ static void html_codeblock(void *ud,
     fprintf(fp, "<pre><code>");
     for (n = 0; n < sz; n++) {
         switch (str[n]) {
+            case '<':
+                fprintf(fp, "&lt;");
+                break;
+            case '>':
+                fprintf(fp, "&gt;");
+                break;
             default:
                 fputc(str[n], fp);
                 break;
