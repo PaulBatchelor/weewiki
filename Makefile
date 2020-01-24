@@ -65,6 +65,7 @@ clean:
 	$(RM) weewiki
 	$(RM) $(OBJ)
 	$(RM) weewiki.c weewiki.h
+	$(RM) server.c server.h
 	$(RM) jan.c jan.h
 	$(RM) weewiki_private.h
 	$(RM) orgparse.h
