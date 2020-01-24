@@ -115,9 +115,18 @@ if (ww->db != NULL) {
 The function =weewiki_db= will only be included if the
 SQLite header is included as well. The janet interface for
 instance, is not using this so why bother including it.
+
+Well now. It would seem that the SQLITE3 header file that
+ships with OSX uses the header guard =_SQLITE3_H_=. This was
+causing some warnings to happen. Wonder which bright spark
+at Apple decided *that* was a good idea.
+
+So now, thanks to Apple, I have to complicate things and add
+in some extra logic into what was already halfway to
+becoming a bad idea.
 #+NAME: funcdefs
 #+BEGIN_SRC c
-#ifdef SQLITE3_H
+#if defined(SQLITE3_H) || defined(_SQLITE3_H_)
 sqlite3* weewiki_db(weewiki_d *ww);
 #endif
 #+END_SRC
