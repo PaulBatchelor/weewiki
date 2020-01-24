@@ -1953,7 +1953,6 @@ static int p_dump(int argc, char *argv[])
     sqlite3_stmt *stmt;
     FILE *fp;
 
-
     if (argc < 2) {
         fp = stdout;
     } else {
@@ -1967,7 +1966,11 @@ static int p_dump(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    if (argc >= 3) {
+        weewiki_open(&ww, argv[2]);
+    } else {
+        weewiki_open(&ww, "a.db");
+    }
 
     db = ww.db;
 
