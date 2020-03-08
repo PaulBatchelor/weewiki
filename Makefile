@@ -22,8 +22,8 @@ OBJ += server.o
 LIBS+=-lz
 endif
 
-C89=$(CC) --std=c89 -pedantic
-C99=$(CC) --std=c99
+C89=$(CC) -std=c89 -pedantic
+C99=$(CC) -std=c99
 
 default: weewiki orgparse_test
 
