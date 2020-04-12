@@ -1,5 +1,4 @@
 #+TITLE: WeeWiki
-
 WeeWiki is a wee little personal wiki engine, with scripting
 capabilities.
 * Top Level Files
@@ -1028,7 +1027,6 @@ static int p_ls(int argc, char *argv[])
                         NULL);
         }
     } else if (argc == 3) {
-        rc = 1;
         if (!strcmp(argv[1], "links")) {
             weewiki_open(&ww, argv[2]);
             sqlite3_exec(ww.db,
