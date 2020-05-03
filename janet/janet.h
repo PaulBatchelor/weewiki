@@ -762,7 +762,9 @@ struct JanetTupleHead {
     int32_t sm_column;
     const Janet data[];
 };
+#endif
 
+#ifndef MONOLITH_ANSI
 /* Prefix for a struct */
 struct JanetStructHead {
     JanetGCObject gc;
@@ -771,7 +773,9 @@ struct JanetStructHead {
     int32_t capacity;
     const JanetKV data[];
 };
+#endif
 
+#ifndef MONOLITH_ANSI
 /* Prefix for a string */
 struct JanetStringHead {
     JanetGCObject gc;
@@ -779,7 +783,9 @@ struct JanetStringHead {
     int32_t hash;
     const uint8_t data[];
 };
+#endif
 
+#ifndef MONOLITH_ANSI
 /* Prefix for an abstract value */
 struct JanetAbstractHead {
     JanetGCObject gc;
