@@ -2223,3 +2223,25 @@ static int p_server(int argc, char *argv[])
 }
 #endif
 #+END_SRC
+* JPM
+Runs a local instance of JPM.
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "jpm", 3)) {
+    argc--;
+    argv++;
+    return p_jpm(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_jpm(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_jpm(int argc, char *argv[]);
+static int p_jpm(int argc, char *argv[])
+{
+    return weewiki_jpm(argc, argv);
+}
+#+END_SRC

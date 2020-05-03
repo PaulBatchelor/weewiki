@@ -20,21 +20,24 @@
 * IN THE SOFTWARE.
 */
 
+#define MONOLITH_ANSI
 #include "line.h"
 
 /* Common */
 Janet janet_line_getter(int32_t argc, Janet *argv) {
+    const char *str;
+    JanetBuffer *buf;
     janet_arity(argc, 0, 2);
-    const char *str = (argc >= 1) ? (const char *) janet_getstring(argv, 0) : "";
-    JanetBuffer *buf = (argc >= 2) ? janet_getbuffer(argv, 1) : janet_buffer(10);
+    str = (argc >= 1) ? (const char *) janet_getstring(argv, 0) : "";
+    buf = (argc >= 2) ? janet_getbuffer(argv, 1) : janet_buffer(10);
     janet_line_get(str, buf);
     return janet_wrap_buffer(buf);
 }
 
 static void simpleline(JanetBuffer *buffer) {
     FILE *in = janet_dynfile("in", stdin);
-    buffer->count = 0;
     int c;
+    buffer->count = 0;
     for (;;) {
         c = fgetc(in);
         if (feof(in) || c < 0) {
@@ -450,10 +453,11 @@ static int checktermsupport() {
 }
 
 void janet_line_get(const char *p, JanetBuffer *buffer) {
+    FILE *out;
     prompt = p;
     buffer->count = 0;
     historyi = 0;
-    FILE *out = janet_dynfile("out", stdout);
+    out = janet_dynfile("out", stdout);
     if (!isatty(STDIN_FILENO) || !checktermsupport()) {
         simpleline(buffer);
         return;

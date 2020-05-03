@@ -10,7 +10,9 @@ OBJ+=\
 	janet/init.gen.o\
 	janet/janet_main.o\
 	janet/line.o \
-	janet/janet_sqlite.o
+	janet/janet_sqlite.o \
+	janet/jpm.gen.o \
+	janet/jpm.o \
 
 CFLAGS += -g -Wall -O3 -I.
 
