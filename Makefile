@@ -2,7 +2,6 @@ WORGLE=worgle -g -Werror
 
 WWSERVER=1
 
-OBJ=weewiki.o jan.o
 
 # Janet objects
 OBJ+=\
@@ -14,7 +13,10 @@ OBJ+=\
 	janet/jpm.gen.o \
 	janet/jpm.o \
 
+OBJ+=weewiki.o jan.o
+
 CFLAGS += -g -Wall -O3 -I.
+CFLAGS += -Wl,--export-dynamic
 
 LIBS=-lsqlite3
 
@@ -35,6 +37,8 @@ default: weewiki orgparse_test
 janet/%.o: janet/%.c
 	$(C99) -c $(CFLAGS) $< -o $@
 
+janet/janet_main.c: orgparse.h weewiki.c
+
 jan.o: jan.c
 	$(C99) -c $(CFLAGS) $< -o $@
 
@@ -54,7 +58,6 @@ orgparse.h: orgparse.org
 
 orgparse_test: orgparse_test.c orgparse.h
 	$(C89) $(CFLAGS) $< -o $@
-
 
 weewiki: $(OBJ) orgparse.h
 	$(C89) $(CFLAGS) $(OBJ) -o $@ $(LDFLAGS) $(LIBS)
