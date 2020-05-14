@@ -2,6 +2,7 @@ WORGLE=worgle -g -Werror
 
 WWSERVER=1
 
+OS=$(shell uname -s)
 
 # Janet objects
 OBJ+=\
@@ -14,9 +15,11 @@ OBJ+=\
 	janet/jpm.o \
 
 OBJ+=weewiki.o jan.o
-
 CFLAGS += -g -Wall -O3 -I.
+
+ifneq ($(OS), Darwin)
 CFLAGS += -Wl,--export-dynamic
+endif
 
 LIBS=-lsqlite3
 
