@@ -120,17 +120,11 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     return 1;
 }
 #+END_SRC
-* DONE Main Data
-CLOSED: [2020-01-16 Thu 18:16]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:16]
-- State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
+* Main Data
 This is stuff that gets instantiated at startup.
 For now, this is probably just the database, though
 this could change.
-** DONE Struct
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
-- State "WIP"        from "TODO"       [2020-01-14 Tue 15:17]
+** Struct
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct wwserver_d wwserver_d;
@@ -145,8 +139,7 @@ struct wwserver_d {
     int use_sqlar;
 };
 #+END_SRC
-** DONE global data setters/getters
-CLOSED: [2020-01-16 Thu 18:15]
+** global data setters/getters
 - State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
 - State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
 #+NAME: global_data
@@ -175,10 +168,7 @@ static wwserver_d * wwserver_global_get(void)
     return WWS;
 }
 #+END_SRC
-** DONE Startup
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
-- State "WIP"        from "TODO"       [2020-01-12 Sun 17:29]
+** Startup
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int wwserver_init(wwserver_d *wws, int port);
@@ -193,10 +183,7 @@ int wwserver_init(wwserver_d *wws, int port)
     return 1;
 }
 #+END_SRC
-** DONE Cleanup
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
-- State "WIP"        from "TODO"       [2020-01-12 Sun 17:30]
+** Cleanup
 Database is closed. May need to figure out how to cleanly
 break out of loop.
 #+NAME: funcdefs
@@ -214,10 +201,7 @@ void wwserver_clean(wwserver_d *wws)
     /* weewiki data gets cleaned elsewhere */
 }
 #+END_SRC
-* DONE Handle Request Callback
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:15]
-- State "WIP"        from "TODO"       [2020-01-12 Sun 17:34]
+* Handle Request Callback
 The http server library has a single callback entry point.
 
 The handle request callback can be divided up into the
@@ -339,10 +323,7 @@ static void handle_request(struct http_request_s* request)
     }
 }
 #+END_SRC
-* DONE URL Parser (is_wiki)
-CLOSED: [2020-01-14 Tue 10:30]
-- State "DONE"       from "WIP"        [2020-01-14 Tue 10:30]
-- State "WIP"        from "TODO"       [2020-01-14 Tue 10:18]
+* URL Parser (is_wiki)
 First thing the requester does is parse the URL, this
 determines what to do.
 
@@ -414,10 +395,7 @@ static int is_wiki(struct http_string_s *target,
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
-* DONE HTML buffer callbacks
-CLOSED: [2020-01-16 Thu 18:16]
-- State "DONE"       from "WIP"        [2020-01-16 Thu 18:16]
-- State "WIP"        from "TODO"       [2020-01-14 Tue 14:55]
+* HTML buffer callbacks
 Instead of writing to a file, HTML is written to a buffer.
 This buffer is allocated/freed inside the request callback,
 and then bound to the org parser data.
@@ -604,7 +582,11 @@ static void html_name(void *ud,
                            const char *str,
                            size_t sz)
 {
-    /* Ignored for now */
+    wws_parser_d *p;
+    p = ud;
+    wws_buffer_write(p->buf, "<div><b><i>&lt;&lt", 18);
+    wws_buffer_write(p->buf, str, sz);
+    wws_buffer_write(p->buf, "&gt;&gt;=</i></b></div>", 23);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -672,10 +654,7 @@ static void html_pgrph(void *ud, int mode)
 #+BEGIN_SRC c
 orgparse_set_pgrph(op, html_pgrph);
 #+END_SRC
-* DONE Buffer Management
-CLOSED: [2020-01-14 Tue 15:17]
-- State "DONE"       from "WIP"        [2020-01-14 Tue 15:17]
-- State "WIP"        from "TODO"       [2020-01-12 Sun 17:41]
+* Buffer Management
 All content must be written to in-memory location.
 This is handled in a very simple way via a buffer type
 called =wws_buffer=.
@@ -836,7 +815,7 @@ static void printer(weewiki_d *w,
     wws_buffer_write(pd->buf, str, sz);
 }
 #+END_SRC
-* WIP Opening Files
+* Opening Files
 The weewiki server is able to serve files like HTML and CSS
 in addition parsing org wiki pages. It looks for a file
 after checking for a wiki page.

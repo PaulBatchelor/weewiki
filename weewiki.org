@@ -1560,9 +1560,17 @@ orgparse_set_codeblock(op, html_codeblock);
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_name(void *ud,
-                           const char *str,
-                           size_t sz)
+                      const char *str,
+                      size_t sz)
 {
+    weewiki_export_d *ex;
+    FILE *fp;
+    ex = ud;
+    fp = ex->fp;
+
+    fprintf(fp, "<div><b><i>&lt;&lt;");
+    fwrite(str, 1, sz, fp);
+    fprintf(fp, "&gt;&gt;=</i></b></div>");
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
@@ -1869,7 +1877,7 @@ int weewiki_export_txtmode(weewiki_export_d *ex)
     return ex->state.flags->txtmode;
 }
 #+END_SRC
-** TODO Parsing In Janet
+** Parsing In Janet
 With the addition of the weewiki server, there is a growing
 need make the Janet functions more flexible. In particular
 the =org= function, which may or may not use the
