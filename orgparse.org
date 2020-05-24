@@ -1170,6 +1170,95 @@ static int test_linknl(void)
     return rc;
 }
 #+END_SRC
+*** Formatted text does line break check
+Formatted operations like =this one= should only exist on
+one line. The text parser should check for line breaks, and
+it doesn't right now.
+
+At the moment, this code gets registered as a code block.
+
+#+BEGIN_SRC text
+foo = one two three
+bar
+=
+Does this work?
+#+END_SRC
+
+#+BEGIN_SRC text
+PARAGRAPH BEGIN
+text: 'foo '
+code: ' one two three
+bar
+'
+text: '
+Does this work?
+'
+PARAGRAPH END
+#+END_SRC
+
+In a similar vein, *this* is a valid tag, * this* is not.
+Also, *this * is not a valid tag.
+Since the solution for both of these is so similar, this
+test will measure for both.
+
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Tag line break + space checker", test_linebreak},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static void linebreak_code(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    int *state;
+    state = ud;
+    *state |= 1;
+}
+
+static void linebreak_bold(void *ud,
+                           const char *str,
+                           size_t sz)
+{
+    int *state;
+    state = ud;
+    *state |= 2;
+}
+
+static int test_linebreak(void)
+{
+    orgparse op;
+    int state;
+    int rc;
+    const char *txt =
+        "foo = one two three\n"
+        "bar\n"
+        "=\n"
+        "Does * this* *work *?";
+
+
+    rc = OK;
+    orgparse_init(&op);
+
+    orgparse_set_code(&op, linebreak_code);
+    orgparse_set_bold(&op, linebreak_bold);
+
+    state = 0;
+    orgparse_run(&op, txt, strlen(txt), &state);
+
+    if (state & 1) {
+        printf("Text should not have parsed as code.\n");
+        rc = FAIL;
+    }
+
+    if (state & 2) {
+        printf("Text should not have parsed as bold.\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
@@ -2092,8 +2181,7 @@ state->flags->newline = 0;
 orgparse_pgrph_begin(op, ud);
 n--; /* go backwards 1 */
 #+END_SRC
-*** DONE Tag Check
-CLOSED: [2019-09-21 Sat 18:39]
+*** Tag Check
 This functionality will generically check a line for
 matching tags. If a tag is found, the end position is
 returned.
@@ -2104,6 +2192,15 @@ static int tag_check(const char *txt,
                      char tag,
                      size_t *len);
 #+END_SRC
+
+A small but important detail: tags in org mode work on a
+single line. If a line break is found before a matching tag,
+it breaks out.
+
+Another detail: tags can't have spaces at the immediately
+after or before the tags. * this* is not a tag. *this * is
+also not a tag.
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int tag_check(const char *txt,
@@ -2115,11 +2212,21 @@ static int tag_check(const char *txt,
     int rc;
     if (sz <= 2) return 0;
     if (txt[0] != tag) return 0;
+    if (txt[1] == ' ') return 0;
 
     rc = 0;
+
+
     for (n = 1; n < sz; n++) {
+        if (txt[n] == '\n') {
+            rc = 0;
+            break;
+        }
+
         if (txt[n] == tag) {
-            rc = 1;
+            if (txt[n - 1] == ' ') rc = 0;
+            else rc = 1;
+
             *len = n - 1;
             break;
         }
