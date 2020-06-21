@@ -1662,27 +1662,6 @@ int weewiki_export_run(weewiki_export_d *ex,
     return orgparse_state_run(&ex->state);
 }
 #+END_SRC
-Don't use this function anymore:
-#+NAME: funcdefs
-#+BEGIN_SRC c
-int weewiki_export_run_txtmode(weewiki_export_d *ex,
-                               const char *buf,
-                               size_t sz,
-                               int txtmode);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-int weewiki_export_run_txtmode(weewiki_export_d *ex,
-                               const char *buf,
-                               size_t sz,
-                               int txtmode)
-{
-    return orgparse_run_txtmode(&ex->op,
-                                buf, sz,
-                                ex,
-                                txtmode);
-}
-#+END_SRC
 
 #+NAME: funcdefs
 #+BEGIN_SRC c

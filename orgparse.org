@@ -717,17 +717,20 @@ typedef struct {
     int e;
     int t;
     orgparse_state s;
+    orgparse *op;
 } bb_d;
 
 static void bb_aux(void *ud, const char *buf, size_t sz)
 {
     bb_d *bb;
+    orgparse_state new;
+    orgparse_state_flags *f;
     bb = ud;
 
-    orgparse_run_txtmode(bb->s.op,
-                         buf, sz,
-                         bb,
-                         bb->s.flags->txtmode);
+    orgparse_state_init(&new, bb->op, buf, sz, bb);
+    f = orgparse_state_flags_get(&bb->s);
+    orgparse_state_flags_set(&new, f);
+    orgparse_state_run(&new);
 }
 
 static void bb_pgrph(void *ud, int mode)
@@ -759,6 +762,7 @@ static int test_block_block(void)
     rc = OK;
 
     orgparse_init(&op);
+    bb.op = &op;
     orgparse_set_aux(&op, bb_aux);
     orgparse_set_pgrph(&op, bb_pgrph);
     orgparse_set_text(&op, bb_txt);
@@ -1701,7 +1705,7 @@ be feasible to run nested calls to this function.
 =orgparse_run= expects a properly intialized + set instance
 of =orgparse=, a text block, the text block size, and any
 user data.
-*** Normal
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int orgparse_run(orgparse *op,
@@ -1740,33 +1744,6 @@ int orgparse_init_and_run(orgparse *op,
 {
     orgparse_state_init(state, op, txt, sz, ud);
     return orgparse_state_run(state);
-}
-#+END_SRC
-*** Text Mode (Please deprecate)
-By default, the =orgparse_run= function starts with textmode
-set to be false. However, this can cause problems with
-inline org generation via Janet. This function allows the
-textmode to be set before starting.
-#+NAME: funcdefs
-#+BEGIN_SRC c
-int orgparse_run_txtmode(orgparse *op,
-                         const char *txt,
-                         size_t sz,
-                         void *ud,
-                         int txtmode);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-int orgparse_run_txtmode(orgparse *op,
-                         const char *txt,
-                         size_t sz,
-                         void *ud,
-                         int txtmode)
-{
-    orgparse_state state;
-    orgparse_state_init(&state, op, txt, sz, ud);
-    state.flags->txtmode = txtmode;
-    return orgparse_state_run(&state);
 }
 #+END_SRC
 ** Orgparse State
