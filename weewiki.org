@@ -1648,39 +1648,39 @@ orgparse_set_pgrph(op, html_pgrph);
 ** Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int weewiki_export_run(weewiki_export_d *ex,
-                       const char *buf,
-                       size_t sz);
+void weewiki_export_run(weewiki_export_d *ex,
+                        const char *buf,
+                        size_t sz);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int weewiki_export_run(weewiki_export_d *ex,
-                       const char *buf,
-                       size_t sz)
+void weewiki_export_run(weewiki_export_d *ex,
+                        const char *buf,
+                        size_t sz)
 {
     orgparse_state_init(&ex->state, &ex->op, buf, sz, ex);
-    return orgparse_state_run(&ex->state);
+    orgparse_state_run(&ex->state);
 }
 #+END_SRC
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int weewiki_export_continue(weewiki_export_d *ex,
-                            const char *buf,
-                            size_t sz);
+void weewiki_export_continue(weewiki_export_d *ex,
+                             const char *buf,
+                             size_t sz);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int weewiki_export_continue(weewiki_export_d *ex,
-                            const char *buf,
-                            size_t sz)
+void weewiki_export_continue(weewiki_export_d *ex,
+                             const char *buf,
+                             size_t sz)
 {
     orgparse_state_flags *f;
     orgparse_state state;
     orgparse_state_init(&state, &ex->op, buf, sz, ex);
     f = orgparse_state_flags_get(&ex->state);
     orgparse_state_flags_set(&state, f);
-    return orgparse_state_run(&state);
+    orgparse_state_run(&state);
 }
 #+END_SRC
 ** Write File
@@ -1697,14 +1697,11 @@ static void write_file(weewiki_export_d *ex,
                        const unsigned char *txt,
                        size_t txt_sz)
 {
-    int rc;
     janet_dostring(ex->env,
                    (const unsigned char *)"(html-header)",
                    NULL, NULL);
-    rc = weewiki_export_run(ex,
-                            (const char *)txt,
-                            txt_sz);
-    orgparse_wrapup(&ex->op, ex, rc);
+    weewiki_export_run(ex, (const char *)txt, txt_sz);
+    orgparse_end(&ex->op, ex, &ex->state);
     janet_dostring(ex->env,
                    (const unsigned char *)"(html-footer)",
                    NULL, NULL);

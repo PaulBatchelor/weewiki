@@ -819,7 +819,6 @@ static int test_ep_at_wrapup(void)
     int rc;
     epwu_d epwu;
     const char *str = "* Header\n";
-    int out;
 
     epwu.b = 0;
     epwu.e = 0;
@@ -828,8 +827,7 @@ static int test_ep_at_wrapup(void)
 
     orgparse_init(&op);
     orgparse_set_pgrph(&op, epwu_pgrph);
-    out = orgparse_run(&op, str, strlen(str), &epwu);
-    orgparse_wrapup(&op, &epwu, out);
+    orgparse_run(&op, str, strlen(str), &epwu);
 
     if (epwu.e != 0) {
         printf("Found %d paragraphs ends. ", epwu.e);
@@ -898,7 +896,6 @@ static int test_continuations(void)
     orgparse op;
     int rc;
     cont_d cont;
-    int out;
     orgparse_state_flags *f;
     const char *blk1 = "foo\n\n";
     const char *blk2 = "bar\n";
@@ -928,10 +925,10 @@ static int test_continuations(void)
     }
 
     orgparse_state_flags_set(&cont.s2, f);
-    out = orgparse_state_run(&cont.s2);
+    orgparse_state_run(&cont.s2);
 
 
-    orgparse_wrapup(&op, &cont, out);
+    orgparse_end(&op, &cont, &cont.s2);
 
     if (cont.b != 2) {
         printf("Found %d paragraphs begins. ", cont.b);
@@ -1644,23 +1641,10 @@ void orgparse_pgrph_end(orgparse *op, void *ud)
 #+END_SRC
 
 Paragraphs do not end at the end of a file. It will need to
-be ended with =orgparse_wrapup=.
-
-Note: this is *deprecated* and should be removed ASAP.
-
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void orgparse_wrapup(orgparse *op, void *ud, int rc);
-#+END_SRC
-#+NAME: functions
-#+BEGIN_SRC c
-void orgparse_wrapup(orgparse *op, void *ud, int rc)
-{
-    if (rc) {
-        orgparse_pgrph_end(op, ud);
-    }
-}
-#+END_SRC
+be ended explicitely. This used to be done with a function
+called =orgparse_wrapup=, which worked by checking a return
+flag and adding a paragraph. This ended up being too
+simplistic and limiting, and has since been removed..
 
 A new version of =orgparse_wrapup= is used, this time taking
 in an =orgparse_state= variable. We'll call it
@@ -1708,42 +1692,41 @@ user data.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int orgparse_run(orgparse *op,
-                 const char *txt,
-                 size_t sz,
-                 void *ud);
+void orgparse_run(orgparse *op,
+                  const char *txt,
+                  size_t sz,
+                  void *ud);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int orgparse_run(orgparse *op,
-                 const char *txt,
-                 size_t sz,
-                 void *ud)
+void orgparse_run(orgparse *op,
+                  const char *txt,
+                  size_t sz,
+                  void *ud)
 {
     orgparse_state state;
     orgparse_init_and_run(op, txt, sz, ud, &state);
     orgparse_end(op, ud, &state);
-    return 0; /* TODO: remove return value */
 }
 #+END_SRC
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int orgparse_init_and_run(orgparse *op,
-                          const char *txt,
-                          size_t sz,
-                          void *ud,
-                          orgparse_state *state);
+void orgparse_init_and_run(orgparse *op,
+                           const char *txt,
+                           size_t sz,
+                           void *ud,
+                           orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int orgparse_init_and_run(orgparse *op,
-                          const char *txt,
-                          size_t sz,
-                          void *ud,
-                          orgparse_state *state)
+void orgparse_init_and_run(orgparse *op,
+                           const char *txt,
+                           size_t sz,
+                           void *ud,
+                           orgparse_state *state)
 {
     orgparse_state_init(state, op, txt, sz, ud);
-    return orgparse_state_run(state);
+    orgparse_state_run(state);
 }
 #+END_SRC
 ** Orgparse State
@@ -1881,11 +1864,11 @@ size_t orgparse_state_size(void)
 *** State Run
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int orgparse_state_run(orgparse_state *state);
+void orgparse_state_run(orgparse_state *state);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-int orgparse_state_run(orgparse_state *state)
+void orgparse_state_run(orgparse_state *state)
 {
     int txtmode;
     size_t sz;
@@ -1935,7 +1918,6 @@ int orgparse_state_run(orgparse_state *state)
         }
         state->flags->txtmode = txtmode;
     }
-    return txtmode;
 }
 #+END_SRC
 ** Parse Header
