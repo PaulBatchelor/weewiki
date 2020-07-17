@@ -264,6 +264,30 @@ void weewiki_print_set(weewiki_d *ww,
     ww->print = print;
 }
 #+END_SRC
+*** Global Page Name
+Stores name of current page being parsed.
+#+NAME: contents
+#+BEGIN_SRC c
+const char *name;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+ww->name = NULL;
+#+END_SRC
+
+Can be retrieved with =weewiki_pgname=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+const char * weewiki_pgname(weewiki_d *ww);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+const char * weewiki_pgname(weewiki_d *ww)
+{
+    return ww->name;
+}
+#+END_SRC
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -1781,13 +1805,13 @@ static void write_single_file(weewiki_d *ww,
     ex->fp = mkfile(dir, NULL);
     ww->fp = ex->fp;
     ww->ud = ex;
+    ww->name = name;
 
     write_file(ex,
                sqlite3_column_text(stmt, 0),
                sqlite3_column_bytes(stmt, 0));
 
     sqlite3_finalize(stmt);
-
 }
 #+END_SRC
 ** Write Multiple Files
