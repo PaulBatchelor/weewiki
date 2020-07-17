@@ -29,10 +29,11 @@ For all things related to Janet.
 <<funcdefs>>
 #endif
 #+END_SRC
-* Janet Print
+* Janet Print + Prin
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static Janet cfun_io_print(int32_t argc, Janet *argv);
+static Janet cfun_io_prin(int32_t argc, Janet *argv);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
@@ -49,6 +50,21 @@ static Janet cfun_io_print(int32_t argc, Janet *argv)
         weewiki_print(ww, (const char *)vstr, len);
     }
     weewiki_print(ww, "\n", 1);
+    return janet_wrap_nil();
+}
+
+static Janet cfun_io_prin(int32_t argc, Janet *argv)
+{
+    int32_t len;
+    int32_t i;
+    weewiki_d *ww;
+
+    ww = weewiki_get();
+    for (i = 0; i < argc; ++i) {
+        const uint8_t *vstr = janet_to_string(argv[i]);
+        len = janet_string_length(vstr);
+        weewiki_print(ww, (const char *)vstr, len);
+    }
     return janet_wrap_nil();
 }
 #+END_SRC
@@ -104,6 +120,10 @@ void weewiki_janet_cfuns(JanetTable *env)
     janet_def(env,
               "print",
               janet_wrap_cfunction(cfun_io_print),
+              NULL);
+    janet_def(env,
+              "prin",
+              janet_wrap_cfunction(cfun_io_prin),
               NULL);
     janet_def(env,
               "org",
