@@ -278,6 +278,7 @@ static void handle_request(struct http_request_s* request)
             orgparse *op;
             orgparse_state *state;
             wws_parser_d pd;
+            char *namebuf;
 
             op = calloc(1, orgparse_size());
             state = calloc(1, orgparse_state_size());
@@ -289,6 +290,11 @@ static void handle_request(struct http_request_s* request)
             http_response_header(response, "Content-Type", "text/html");
             http_response_status(response, 200);
             weewiki_ud_set(wws->ww, &pd);
+
+            /* copy name to null-terminated string */
+            namebuf = calloc(1, len + 1);
+            strncpy(namebuf, name, len);
+            weewiki_pgname_set(wws->ww, namebuf);
 
             janet_dostring(wws->env,
                         (const unsigned char *)"(html-header)",
@@ -306,6 +312,7 @@ static void handle_request(struct http_request_s* request)
             weewiki_ud_set(wws->ww, NULL);
             free(op);
             free(state);
+            free(namebuf);
         }
 
         http_response_body(response, (const char *)buf.buf, buf.pos);

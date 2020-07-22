@@ -288,6 +288,22 @@ const char * weewiki_pgname(weewiki_d *ww)
     return ww->name;
 }
 #+END_SRC
+
+Set it indirectly with =weewiki_pgname_set=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_pgname_set(weewiki_d *ww, const char *name);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_pgname_set(weewiki_d *ww, const char *name)
+{
+    ww->name = name;
+}
+#+END_SRC
+
+
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -1849,6 +1865,7 @@ static void write_multiple_files(weewiki_d *ww,
                         sqlite3_column_text(stmt, 0));
         ww->fp = ex->fp;
         ww->ud = ex;
+        ww->name = (const char *)key;
         if (ex->fp != NULL) {
             fprintf(stdout, "Writing %s\n", key);
             write_file(ex,
