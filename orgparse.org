@@ -1260,6 +1260,22 @@ static int test_linebreak(void)
     return rc;
 }
 #+END_SRC
+*** TODO Optional newline after title
+A =TITLE= line should be able include one optional newline
+without it actually being a newline.
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"Optional Newline after TITLE", test_onat},
+#+END_SRC
+#+NAME: tests
+#+BEGIN_SRC c
+static int test_onat(void)
+{
+    /* TODO: implement */
+    fprintf(stderr, "Skipping for now. Please implement.\n");
+    return IGNORE;
+}
+#+END_SRC
 * Main Interface
 Orgparse is a callback interface. These functions will
 handle the various parts of the org file.
