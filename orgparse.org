@@ -1267,13 +1267,88 @@ without it actually being a newline.
 #+BEGIN_SRC c
 {"Optional Newline after TITLE", test_onat},
 #+END_SRC
+
+When this happens:
+
+
+#+BEGIN_SRC text
+#+TITLE: foo
+
+Hello
+#+END_SRC
+
+The output looks like this:
+
+#+BEGIN_SRC text
+title: 'foo'
+PARAGRAPH BEGIN
+PARAGRAPH END
+PARAGRAPH BEGIN
+text: 'Hello
+'
+PARAGRAPH END
+#+END_SRC
+
+It has an empty BEGIN/END paragraph, when that shouldn't
+be there.
+
+Ideally, such a thing should look like this:
+
+#+BEGIN_SRC text
+title: 'foo'
+PARAGRAPH BEGIN
+text: 'Hello
+'
+PARAGRAPH END
+#+END_SRC
+
+In other words, the title tag specifically is allowed to
+have on extra line immediately following it. I may make this
+true for all tags that start with "#+" later because it
+looks nice.
+
 #+NAME: tests
 #+BEGIN_SRC c
+static void onat_pgrph(void *ud, int mode)
+{
+    if (!mode) {
+        int *npgrph = ud;
+        (*npgrph)++;
+    }
+}
+
 static int test_onat(void)
 {
-    /* TODO: implement */
-    fprintf(stderr, "Skipping for now. Please implement.\n");
-    return IGNORE;
+    orgparse op;
+    int rc;
+    int npgrph;
+
+    const char *txt =
+        "#+TITLE: foo\n"
+        "\n"
+        "Hello.";
+
+    npgrph = 0;
+
+    rc = FAIL;
+
+    orgparse_init(&op);
+    orgparse_set_pgrph(&op, onat_pgrph);
+    orgparse_run(&op, txt, strlen(txt), &npgrph);
+
+    if (npgrph == 1) rc = OK;
+
+    if (npgrph == 2) {
+        fprintf(stderr, "2 paragraphs: title didn't slurp newline\n");
+        rc = FAIL;
+    }
+
+    if (npgrph == 0) {
+        fprintf(stderr, "0 paragraphs: is this thing working?\n");
+        rc = FAIL;
+    }
+
+    return rc;
 }
 #+END_SRC
 * Main Interface
