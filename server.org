@@ -591,7 +591,7 @@ static void html_name(void *ud,
 {
     wws_parser_d *p;
     p = ud;
-    wws_buffer_write(p->buf, "<div><b><i>&lt;&lt", 18);
+    wws_buffer_write(p->buf, "<div><b><i>&lt;&lt;", 19);
     wws_buffer_write(p->buf, str, sz);
     wws_buffer_write(p->buf, "&gt;&gt;=</i></b></div>", 23);
 }
