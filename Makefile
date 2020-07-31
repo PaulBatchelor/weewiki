@@ -1,3 +1,4 @@
+.PHONY: tickets
 WORGLE=worgle -g -Werror
 
 WWSERVER=1
@@ -68,6 +69,9 @@ weewiki: $(OBJ) orgparse.h
 install: weewiki
 	mkdir -p /usr/local/bin
 	cp weewiki /usr/local/bin
+
+tickets:
+	fossil ticket show simple
 
 clean:
 	$(RM) weewiki
