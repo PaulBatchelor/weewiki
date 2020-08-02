@@ -1260,7 +1260,7 @@ static int test_linebreak(void)
     return rc;
 }
 #+END_SRC
-*** TODO Optional newline after title
+*** Optional newline after title
 A =TITLE= line should be able include one optional newline
 without it actually being a newline.
 #+NAME: test_entries
@@ -3108,6 +3108,10 @@ static int parse_title(orgparse_state *state)
                 op->title(ud, cmdstr, cmdstrlen);
             }
             *pos += totallen;
+
+            if ((*pos + 1) < sz && txt[*pos + 1] == '\n') {
+                (*pos) = (*pos) + 1;
+            }
             return 1;
         }
     }
