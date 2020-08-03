@@ -1,0 +1,44 @@
+#+TITLE: Weewiki Keyword Scraper
+* Overview
+This document describes an implementation of a weewiki
+keyword scraper. This keyword scraper goes through every
+wiki page and looks for any word or phrase surrounded by
+the '=' (equal signs) character, it will then make a note
+of it in a new table called =wikiwords=. From there,
+the data can be parsed and displayed an interesting ways
+using Janet + SQLite.
+* SQLite tables
+This creates (or replaces) a table called =wikiwords=. The
+schema for this is two strings: the word, and the page it
+is on.
+* Inserting an entry
+Inserting an entry is done via a SQLite statement. The
+arguments needed are the database, word, and page name.
+String lengths are also required as well.
+* Parsing A Page
+A page from weewiki gets loaded up into memory parsed
+line-by-line. The page name must be supplied here as well.
+
+Each line is checked for enclosing '='
+characters. The left '=' must not have a space following it,
+and the right '=' must not have a space preceding it.
+
+If such a pattern is found, the content inside is captured.
+This is considered to be a "word", even if there are
+multiple words contained in it. This word is then sent to
+be inserted into the =wikiwords= page.
+* Iterating through pages (top)
+This is a process that gets applied to each page, and works
+very similarly to the =export= command.
+
+Before any iteration can begin, a few bits of
+initialization. First the database is opened, and a
+=wikiwords= table is created or replaced.
+
+Next, a =BEGIN= statement is used to speed writes up.
+
+All the pages in the =wiki= table are queried, their keys
+and values extracted. The keys and values are fed into the
+analyzer.
+
+At the end of the loop, the =COMMIT= message is executed.
