@@ -2045,7 +2045,7 @@ static int p_dump(int argc, char *argv[])
                        &stmt,
                        NULL);
 
-    fprintf(fp, "\n# linked lages\n\n");
+    fprintf(fp, "\n# linked pages\n\n");
 
     while (1) {
         rc = sqlite3_step(stmt);
