@@ -2270,3 +2270,28 @@ static int p_jpm(int argc, char *argv[])
     return weewiki_jpm(argc, argv);
 }
 #+END_SRC
+* TODO Keyscrape
+Scrapes keywords for a given page. If no page
+is given, it scrapes all pages. The output is written
+to =stdout= as a list of comma-separated values (CSV).
+
+#+NAME: matching
+#+BEGIN_SRC c
+else if (match(argv[1], len, "keyscrape", 9)) {
+    argc--;
+    argv++;
+    return p_keyscrape(argc, argv);
+}
+#+END_SRC
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_keyscrape(int argc, char *argv[]);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+int ww_keyscrape(int argc, char *argv[]);
+static int p_keyscrape(int argc, char *argv[])
+{
+    return ww_keyscrape(argc, argv);
+}
+#+END_SRC

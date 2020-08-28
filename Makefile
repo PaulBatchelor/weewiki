@@ -15,7 +15,7 @@ OBJ+=\
 	janet/jpm.gen.o \
 	janet/jpm.o \
 
-OBJ+=weewiki.o jan.o
+OBJ+=weewiki.o jan.o keyscrape.o
 CFLAGS += -g -Wall -O3 -I.
 
 ifneq ($(OS), Darwin)
