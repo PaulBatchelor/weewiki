@@ -303,7 +303,6 @@ void weewiki_pgname_set(weewiki_d *ww, const char *name)
 }
 #+END_SRC
 
-
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -354,6 +353,21 @@ void weewiki_set(weewiki_d *ww)
 weewiki_d *weewiki_get(void)
 {
     return WeeWiki;
+}
+#+END_SRC
+** Struct Size
+The struct size can be found with =weewiki_sizeof=. Useful
+when dealing with weewiki as an opaque struct.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+unsigned long weewiki_sizeof(void);
+#+END_SRC
+#+NAME: functions
+#+BEGIN_SRC c
+unsigned long weewiki_sizeof(void)
+{
+    return sizeof(weewiki_d);
 }
 #+END_SRC
 * High Level Functions

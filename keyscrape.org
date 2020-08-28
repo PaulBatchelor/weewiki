@@ -12,6 +12,10 @@ This compiles to a single file, called =keyscrape.c=.
 #+NAME: keyscrape.c
 #+BEGIN_SRC c :tangle keyscrape.c
 #include <stdio.h>
+#include <stdlib.h>
+#include <sqlite3.h>
+#include "orgparse.h"
+#include "weewiki.h"
 <<funcdefs>>
 <<funcs>>
 #+END_SRC
@@ -29,12 +33,26 @@ int ww_keyscrape(int argc, char *argv[]);
 int ww_keyscrape(int argc, char *argv[])
 {
     printf("Coming soon.\n");
+    parse_all_pages();
     return 0;
 }
 #+END_SRC
 * Parsing A Page
 A page from weewiki gets loaded up into memory parsed
 line-by-line. The page name must be supplied here as well.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void parse_file(const char *key, const char *val, FILE *fp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void parse_file(const char *key, const char *val, FILE *fp)
+{
+    fprintf(fp, "%s\n", key);
+}
+#+END_SRC
 
 Each line is checked for enclosing equal signs
 characters. The left equal must not have a space following it,
@@ -48,9 +66,76 @@ to the specified filehandle, presumably =stdout=.
 This is a process that gets applied to each page, and works
 very similarly to the =export= command.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+static void parse_all_pages(void);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void parse_all_pages(void)
+{
+    weewiki_d *ww;
+    sqlite3_stmt *stmt;
+    sqlite3 *db;
+    int rc;
+    <<init_and_open>>
+    <<create_sqlite_statement>>
+    <<iterate_through_pages>>
+    <<cleanup>>
+}
+#+END_SRC
+
 Before any iteration can begin, a few bits of
-initialization. First the database is opened.
+initialization. The database is opened.
+
+#+NAME: init_and_open
+#+BEGIN_SRC c
+ww = malloc(weewiki_sizeof());
+weewiki_init(ww);
+weewiki_open(ww, "a.db");
+
+db = weewiki_db(ww);
+#+END_SRC
 
 All the pages in the =wiki= table are queried, their keys
 and values extracted. The keys and values are fed into the
-analyzer.
+analyzer. First, the SQLite statment is created, then
+it is stepped through.
+
+#+NAME: create_sqlite_statement
+#+BEGIN_SRC c
+sqlite3_prepare_v2(db,
+                    "SELECT key, value "
+                    "FROM wiki "
+                    "WHERE key NOT LIKE \"@%\";",
+                    -1,
+                    &stmt,
+                    NULL);
+#+END_SRC
+
+#+NAME: iterate_through_pages
+#+BEGIN_SRC c
+rc = sqlite3_step(stmt);
+
+while (rc == SQLITE_ROW) {
+    const char *key;
+    const char *val;
+
+    key = (const char *)sqlite3_column_text(stmt, 0);
+    val = (const char *)sqlite3_column_text(stmt, 1);
+    parse_file(key, val, stdout);
+    rc = sqlite3_step(stmt);
+}
+#+END_SRC
+
+At cleanup, the database is closed, and the statment
+cleaned up.
+
+#+NAME: cleanup
+#+BEGIN_SRC c
+sqlite3_finalize(stmt);
+weewiki_close(ww);
+weewiki_clean(ww);
+free(ww);
+#+END_SRC
