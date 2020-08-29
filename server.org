@@ -1,7 +1,4 @@
-#+TODO: TODO(t) WIP(w@/!) | DONE(d!)
 #+TITLE: WeeWiki Server
-A work in progress. Rambles for now. No code.
-
 This document aims to implement a local http server around
 weewiki. Instead of statically generating HTML,
 pages are dynamically generated.
@@ -322,6 +319,8 @@ static void handle_request(struct http_request_s* request)
     } else if (wws_find_and_serve(wws, request, &target)) {
         return;
     } else {
+        /* TODO: pass URLs to Janet to be processed */
+        /* if that doesn't work, 404 it */
         struct http_response_s* response = http_response_init();
         http_response_status(response, 404);
         http_response_header(response, "Content-Type", "text/plain");
@@ -330,7 +329,7 @@ static void handle_request(struct http_request_s* request)
     }
 }
 #+END_SRC
-* URL Parser (is_wiki)
+* Wiki URL Parser (is_wiki)
 First thing the requester does is parse the URL, this
 determines what to do.
 
@@ -402,6 +401,12 @@ static int is_wiki(struct http_string_s *target,
 
 If it matches, the URL parser will extract the wiki page
 name and attempt to retrieve it from the database.
+* TODO Custom URL Parser in Janet
+If WeeWiki doesn't know what to do with a URL, it will
+attempt to pass it along to Janet to get processed. URLs
+will be handled in a function called =ww-handle-url=. In
+this function, the URL can be processed and Janet can use
+=print=, =prin=, and =org= to dynamically generate content.
 * HTML buffer callbacks
 Instead of writing to a file, HTML is written to a buffer.
 This buffer is allocated/freed inside the request callback,
