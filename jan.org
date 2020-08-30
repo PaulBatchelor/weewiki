@@ -87,29 +87,42 @@ static Janet cfun_org(int32_t argc, Janet *argv)
     return janet_wrap_nil();
 }
 #+END_SRC
-* Getting current page name
-#+NAME: static_funcdefs
+* Load Janet config internally
+When the server is served from a file, the main config
+file is loaded from the SQLite database rather than
+from the file. It will attempt to look for the config
+file under the keyword =@config=.
+#+NAME: funcdefs
 #+BEGIN_SRC c
-static Janet cfun_name(int32_t argc, Janet *argv);
+void weewiki_janet_loadconfig_internal(JanetTable *env,
+                                       weewiki_d *ww);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-static Janet cfun_name(int32_t argc, Janet *argv)
+void weewiki_janet_loadconfig_internal(JanetTable *env,
+                                       weewiki_d *ww)
 {
-    weewiki_d *ww;
-    const char *name;
-    Janet out;
-    ww = weewiki_get();
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
 
-    name = weewiki_pgname(ww);
+    db = weewiki_db(ww);
+    sqlite3_prepare_v2(db,
+                       "SELECT value FROM wiki WHERE(key==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, "@config", -1, NULL);
 
-    out = janet_wrap_nil();
+    rc = sqlite3_step(stmt);
 
-    if (name !=NULL) {
-        out = janet_wrap_string(janet_string((const unsigned char *)name, strlen(name)));
+    if (rc == SQLITE_ROW) {
+        janet_dostring(env,
+                       (const char *)sqlite3_column_text(stmt, 0),
+                       NULL, NULL);
     }
 
-    return out;
+    sqlite3_finalize(stmt);
 }
 #+END_SRC
 * Janet
@@ -186,6 +199,7 @@ void weewiki_janet_cfuns(JanetTable *env)
               "ww-name",
               janet_wrap_cfunction(cfun_name),
               NULL);
+    <<janet_defs>>
     weewiki_janet_sqlite(env);
     janet_dostring(env,
                     "(defn html-header () ())"
@@ -377,41 +391,54 @@ static Janet cfun_ww_db(int32_t argc, Janet *argv)
     return weewiki_return_db(weewiki_db(ww));
 }
 #+END_SRC
-* Load Janet config internally
-When the server is served from a file, the main config
-file is loaded from the SQLite database rather than
-from the file. It will attempt to look for the config
-file under the keyword =@config=.
-#+NAME: funcdefs
+** Getting current page name
+#+NAME: static_funcdefs
 #+BEGIN_SRC c
-void weewiki_janet_loadconfig_internal(JanetTable *env,
-                                       weewiki_d *ww);
+static Janet cfun_name(int32_t argc, Janet *argv);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
-void weewiki_janet_loadconfig_internal(JanetTable *env,
-                                       weewiki_d *ww)
+static Janet cfun_name(int32_t argc, Janet *argv)
 {
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    int rc;
+    weewiki_d *ww;
+    const char *name;
+    Janet out;
+    ww = weewiki_get();
 
-    db = weewiki_db(ww);
-    sqlite3_prepare_v2(db,
-                       "SELECT value FROM wiki WHERE(key==?1);",
-                       -1,
-                       &stmt,
-                       NULL);
-    sqlite3_bind_text(stmt, 1, "@config", -1, NULL);
+    name = weewiki_pgname(ww);
 
-    rc = sqlite3_step(stmt);
+    out = janet_wrap_nil();
 
-    if (rc == SQLITE_ROW) {
-        janet_dostring(env,
-                       (const char *)sqlite3_column_text(stmt, 0),
-                       NULL, NULL);
+    if (name !=NULL) {
+        out = janet_wrap_string(janet_string((const unsigned char *)name, strlen(name)));
     }
 
-    sqlite3_finalize(stmt);
+    return out;
+}
+#+END_SRC
+** Is weewiki in server mode?
+Done with the janet function =ww-server?=
+
+#+NAME: janet_defs
+#+BEGIN_SRC c
+janet_def(env,
+          "ww-server?",
+          janet_wrap_cfunction(cfun_is_server),
+          NULL);
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_is_server(int32_t argc, Janet *argv);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_is_server(int32_t argc, Janet *argv)
+{
+    weewiki_d *ww;
+    ww = weewiki_get();
+
+    return janet_wrap_boolean(weewiki_is_server(ww));
 }
 #+END_SRC

@@ -72,6 +72,7 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[])
     weewiki_parse_set(ww, parse_org);
     weewiki_print_set(ww, printer);
     weewiki_ud_set(ww, NULL);
+    weewiki_is_server_set(ww, 1);
 
     if (argc >= 3) {
         wwserver_init(&wws, atoi(argv[2]));
@@ -776,7 +777,7 @@ void wws_buffer_extend(wws_buffer *wb, int amount)
      wb->buf = realloc(wb->buf, wb->size);
 }
 #+END_SRC
-* Janet CallBacks
+* Janet Callbacks
 ** Org Parser Callback for Janet
 - State "DONE"       from "DONE"       [2020-01-15 Wed 17:06]
 - State "DONE"       from "WIP"        [2020-01-15 Wed 15:40]

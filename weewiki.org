@@ -302,7 +302,43 @@ void weewiki_pgname_set(weewiki_d *ww, const char *name)
     ww->name = name;
 }
 #+END_SRC
+*** Server Flag
+The variable =is_server= is a boolean variable used
+to determine if weewiki is being used as a weewiki server
+or not. 1 is true, 0 is false.
 
+#+NAME: contents
+#+BEGIN_SRC c
+int is_server;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+weewiki_is_server_set(ww, 0);
+#+END_SRC
+
+It is false by default,
+and can be set with =weewiki_is_server_set= and
+the value is retrieved =weewiki_is_server=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_is_server_set(weewiki_d *ww, int x);
+int weewiki_is_server(weewiki_d *ww);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_is_server_set(weewiki_d *ww, int is_server)
+{
+    ww->is_server = is_server;
+}
+
+int weewiki_is_server(weewiki_d *ww)
+{
+    return ww->is_server;
+}
+#+END_SRC
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -2235,6 +2271,7 @@ default. Only enabled if =WWSERVER= is defined.
 #+BEGIN_SRC c
 int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 #ifdef WWSERVER
@@ -2284,7 +2321,7 @@ static int p_jpm(int argc, char *argv[])
     return weewiki_jpm(argc, argv);
 }
 #+END_SRC
-* TODO Keyscrape
+* Keyscrape
 Scrapes keywords for a given page. If no page
 is given, it scrapes all pages. The output is written
 to =stdout= as a list of comma-separated values (CSV).
