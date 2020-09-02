@@ -22,6 +22,7 @@ capabilities.
 #include "jan.h"
 <<global_data>>
 <<static_funcdefs>>
+<<argparse>>
 <<functions>>
 static int match(const char *s1,
                  int sz1,
@@ -405,6 +406,22 @@ unsigned long weewiki_sizeof(void)
 {
     return sizeof(weewiki_d);
 }
+#+END_SRC
+* WIP Argument Parsing
+Based on constructs found in =worgmap=, a project found
+in =worgle=.
+#+NAME: argparse
+#+BEGIN_SRC c
+typedef struct {
+    const char *name;
+    int len;
+    int (*fun)(int, char **);
+    const char *desc;
+} weewiki_argparse_entry;
+
+weewiki_argparse_entry commands[] = {
+    <<argparse_entries>>
+};
 #+END_SRC
 * High Level Functions
 Designed to be used inside Janet scripts.
@@ -903,9 +920,14 @@ int weewiki_exists(weewiki_d *ww, const char *key)
 }
 #+END_SRC
 * Push/Pull
-** DONE Push
-CLOSED: [2019-09-14 Sat 09:24]
+** Push
 Pushes a file to database.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"push", 4, p_push, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "push", 4)) {
@@ -914,10 +936,12 @@ else if (match(argv[1], len, "push", 4)) {
     return p_push(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_push(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_push(int argc, char *argv[])
@@ -942,8 +966,12 @@ static int p_push(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-** DONE Pull
-CLOSED: [2019-09-14 Sat 10:16]
+** Pull
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"pull", 4, p_pull, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "pull", 4)) {
@@ -952,6 +980,7 @@ else if (match(argv[1], len, "pull", 4)) {
     return p_pull(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_pull(int argc, char *argv[]);
@@ -980,6 +1009,11 @@ static int p_pull(int argc, char *argv[])
 }
 #+END_SRC
 * Edit
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"edit", 4, p_edit, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "edit", 4)) {
@@ -988,10 +1022,12 @@ else if (match(argv[1], len, "edit", 4)) {
     return p_edit(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_edit(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_edit(int argc, char *argv[])
@@ -1039,6 +1075,12 @@ static int p_edit(int argc, char *argv[])
 #+END_SRC
 * ls
 List all pages.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"ls", 2, p_ls, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "ls", 2)) {
@@ -1047,10 +1089,12 @@ else if (match(argv[1], len, "ls", 2)) {
     return p_ls(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_ls(int argc, char *argv[]);
 #+END_SRC
+
 You'll notice some duplicate code here. This has been
 introduced because of a change in behavior. The last
 parameter of "ls" can now specify the databse file name in
@@ -1139,6 +1183,12 @@ static int p_ls(int argc, char *argv[])
 #+END_SRC
 * Link
 The "link" operation will link a page to a filepath.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"link", 4, p_link, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "link", 4)) {
@@ -1147,10 +1197,12 @@ else if (match(argv[1], len, "link", 4)) {
     return p_link(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_link(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_link(int argc, char *argv[])
@@ -1237,6 +1289,12 @@ If the times are equal, no action happens.
 
 If the external file doesn't exist, it is treated as a
 "pull" operation.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"sync", 4, p_sync, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "sync", 4)) {
@@ -1245,10 +1303,12 @@ else if (match(argv[1], len, "sync", 4)) {
     return p_sync(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_sync(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_sync(int argc, char *argv[])
@@ -1274,6 +1334,11 @@ static int p_sync(int argc, char *argv[])
 * Add/Remove Page
 Adds/removes a new page.
 ** add
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"add", 3, p_add, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "add", 3)) {
@@ -1282,10 +1347,12 @@ else if (match(argv[1], len, "add", 3)) {
     return p_add(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_add(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_add(int argc, char *argv[])
@@ -1331,6 +1398,11 @@ static int p_add(int argc, char *argv[])
 }
 #+END_SRC
 ** del
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"del", 3, p_del, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "del", 3)) {
@@ -1339,10 +1411,12 @@ else if (match(argv[1], len, "del", 3)) {
     return p_del(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_del(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_del(int argc, char *argv[])
@@ -1404,6 +1478,11 @@ static int p_del(int argc, char *argv[])
 #+END_SRC
 * Export
 ** Command
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"export", 6, p_export, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "export", 6)) {
@@ -1412,10 +1491,12 @@ else if (match(argv[1], len, "export", 6)) {
     return p_export(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_export(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_export(int argc, char *argv[])
@@ -1984,6 +2065,12 @@ Janet can be run as a standalone program with
 =weewiki janet=. It is almost identical to the
 vanilla janet program, except that the weewiki
 functions are loaded as well.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"janet", 5, p_janet, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "janet", 5)) {
@@ -1992,10 +2079,12 @@ else if (match(argv[1], len, "janet", 5)) {
     return p_janet(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_janet(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 int janet_main(int argc, char *argv[]);
@@ -2011,6 +2100,11 @@ it will regenerate the database.
 
 This is particularly useful for bootstrapping or updating
 a database across multiple computers.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"dump", 4, p_dump, NULL},
+#+END_SRC
 
 #+NAME: matching
 #+BEGIN_SRC c
@@ -2123,6 +2217,12 @@ static int p_dump(int argc, char *argv[])
 The =parse= command will parse an org file via orgparse
 and write the HTML output. This is primarily
 useful for debugging scripts.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"parse", 4, p_parse, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "parse", 5)) {
@@ -2131,10 +2231,12 @@ else if (match(argv[1], len, "parse", 5)) {
     return p_parse(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_parse(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_parse(int argc, char *argv[])
@@ -2191,6 +2293,12 @@ static int p_parse(int argc, char *argv[])
 #+END_SRC
 * Get
 Gets a page and prints it to standard output.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"get", 3, p_get, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "get", 3)) {
@@ -2199,10 +2307,12 @@ else if (match(argv[1], len, "get", 3)) {
     return p_get(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_get(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_get(int argc, char *argv[])
@@ -2228,6 +2338,12 @@ static int p_get(int argc, char *argv[])
 #+END_SRC
 * Set
 Gets a page and prints it to standard output.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"set", 3, p_set, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "set", 3)) {
@@ -2236,10 +2352,12 @@ else if (match(argv[1], len, "set", 3)) {
     return p_set(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_set(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_set(int argc, char *argv[])
@@ -2272,6 +2390,11 @@ default. Only enabled if =WWSERVER= is defined.
 int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 #+END_SRC
 
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"server", 6, p_server, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 #ifdef WWSERVER
@@ -2289,6 +2412,7 @@ else if (match(argv[1], len, "server", 6)) {
 static int p_server(int argc, char *argv[]);
 #endif
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 #ifdef WWSERVER
@@ -2301,6 +2425,12 @@ static int p_server(int argc, char *argv[])
 #+END_SRC
 * JPM
 Runs a local instance of JPM.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"jpm", 3, p_jpm, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "jpm", 3)) {
@@ -2309,10 +2439,12 @@ else if (match(argv[1], len, "jpm", 3)) {
     return p_jpm(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_jpm(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 int weewiki_jpm(int argc, char *argv[]);
@@ -2326,6 +2458,11 @@ Scrapes keywords for a given page. If no page
 is given, it scrapes all pages. The output is written
 to =stdout= as a list of comma-separated values (CSV).
 
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"keyscrape", 9, p_keyscrape, NULL},
+#+END_SRC
+
 #+NAME: matching
 #+BEGIN_SRC c
 else if (match(argv[1], len, "keyscrape", 9)) {
@@ -2334,6 +2471,7 @@ else if (match(argv[1], len, "keyscrape", 9)) {
     return p_keyscrape(argc, argv);
 }
 #+END_SRC
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_keyscrape(int argc, char *argv[]);
