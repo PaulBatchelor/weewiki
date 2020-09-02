@@ -24,33 +24,15 @@ capabilities.
 <<static_funcdefs>>
 <<argparse>>
 <<functions>>
-static int match(const char *s1,
-                 int sz1,
-                 const char *s2,
-                 int sz2)
-{
-    return sz1 == sz2 && !strncmp(s1, s2, sz2);
-}
 
 int main(int argc, char *argv[])
 {
-    size_t len;
     if (argc == 1) {
-        fprintf(stderr, "Enter a command.\n");
+        argparse_print(stdout);
         return 1;
     }
-    len = strlen(argv[1]);
 
-    if (0) {
-
-    }
-    <<matching>>
-    else {
-        fprintf(stderr,
-                "Could not find command %s\n",
-                argv[1]);
-    }
-    return 0;
+    return argparse_match_and_run(argc, argv);
 }
 #+END_SRC
 ** Header Files
@@ -407,9 +389,14 @@ unsigned long weewiki_sizeof(void)
     return sizeof(weewiki_d);
 }
 #+END_SRC
-* WIP Argument Parsing
+* Argument Parsing
 Based on constructs found in =worgmap=, a project found
 in =worgle=.
+** Argparse entry table
+Every subcommand is stored inside of a table. This gets
+dynamically populated with Worgle via a code block called
+=orgparse_entries=.
+
 #+NAME: argparse
 #+BEGIN_SRC c
 typedef struct {
@@ -417,11 +404,85 @@ typedef struct {
     int len;
     int (*fun)(int, char **);
     const char *desc;
-} weewiki_argparse_entry;
+} argparse_entry;
 
-weewiki_argparse_entry commands[] = {
+argparse_entry commands[] = {
     <<argparse_entries>>
 };
+#+END_SRC
+** Argparse Run
+The function =argparse_match_and_run= will attempt find and
+run the proper subcommand. It will return the error code.
+Any non-zero value will be considered an error.
+
+This function assumes that =argc= is greater than 1. Do
+checks beforehand.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int argparse_match_and_run(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static int match(const char *s1,
+                 int sz1,
+                 const char *s2,
+                 int sz2)
+{
+    return sz1 == sz2 && !strncmp(s1, s2, sz2);
+}
+
+
+static int argparse_match_and_run(int argc, char *argv[])
+{
+    size_t len;
+    int rc;
+    int nitems;
+    int i;
+    argparse_entry *cmd;
+
+    rc = 0;
+
+    nitems = sizeof(commands) / sizeof(*commands);
+
+    len = strlen(argv[1]);
+
+    cmd = commands;
+
+    for (i = 0; i < nitems; i++) {
+        if (match(argv[1], len, cmd[i].name, cmd[i].len)) {
+            argc--;
+            argv++;
+            return cmd[i].fun(argc, argv);
+        }
+    }
+
+    return rc;
+}
+#+END_SRC
+** Print Arguments
+Done with =argparse_print=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void argparse_print(FILE *fp);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static void argparse_print(FILE *fp)
+{
+    int nitems;
+    int i;
+
+    fprintf(fp, "Available commands:\n\n");
+    nitems = sizeof(commands) / sizeof(*commands);
+
+    for (i = 0; i < nitems; i++) {
+        fprintf(fp, "%s\n", commands[i].name);
+    }
+}
 #+END_SRC
 * High Level Functions
 Designed to be used inside Janet scripts.
@@ -928,15 +989,6 @@ Pushes a file to database.
 {"push", 4, p_push, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "push", 4)) {
-    argc--;
-    argv++;
-    return p_push(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_push(int argc, char *argv[]);
@@ -972,15 +1024,6 @@ static int p_push(int argc, char *argv[])
 {"pull", 4, p_pull, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "pull", 4)) {
-    argc--;
-    argv++;
-    return p_pull(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_pull(int argc, char *argv[]);
@@ -1012,15 +1055,6 @@ static int p_pull(int argc, char *argv[])
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"edit", 4, p_edit, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "edit", 4)) {
-    argc--;
-    argv++;
-    return p_edit(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -1079,15 +1113,6 @@ List all pages.
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"ls", 2, p_ls, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "ls", 2)) {
-    argc--;
-    argv++;
-    return p_ls(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -1189,15 +1214,6 @@ The "link" operation will link a page to a filepath.
 {"link", 4, p_link, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "link", 4)) {
-    argc--;
-    argv++;
-    return p_link(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_link(int argc, char *argv[]);
@@ -1295,15 +1311,6 @@ If the external file doesn't exist, it is treated as a
 {"sync", 4, p_sync, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "sync", 4)) {
-    argc--;
-    argv++;
-    return p_sync(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_sync(int argc, char *argv[]);
@@ -1337,15 +1344,6 @@ Adds/removes a new page.
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"add", 3, p_add, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "add", 3)) {
-    argc--;
-    argv++;
-    return p_add(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -1401,15 +1399,6 @@ static int p_add(int argc, char *argv[])
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"del", 3, p_del, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "del", 3)) {
-    argc--;
-    argv++;
-    return p_del(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -1481,15 +1470,6 @@ static int p_del(int argc, char *argv[])
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"export", 6, p_export, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "export", 6)) {
-    argc--;
-    argv++;
-    return p_export(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -2071,15 +2051,6 @@ functions are loaded as well.
 {"janet", 5, p_janet, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "janet", 5)) {
-    argc--;
-    argv++;
-    return p_janet(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_janet(int argc, char *argv[]);
@@ -2106,14 +2077,6 @@ a database across multiple computers.
 {"dump", 4, p_dump, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "dump", 4)) {
-    argc--;
-    argv++;
-    return p_dump(argc, argv);
-}
-#+END_SRC
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_dump(int argc, char *argv[]);
@@ -2223,15 +2186,6 @@ useful for debugging scripts.
 {"parse", 4, p_parse, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "parse", 5)) {
-    argc--;
-    argv++;
-    return p_parse(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_parse(int argc, char *argv[]);
@@ -2299,15 +2253,6 @@ Gets a page and prints it to standard output.
 {"get", 3, p_get, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "get", 3)) {
-    argc--;
-    argv++;
-    return p_get(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_get(int argc, char *argv[]);
@@ -2342,15 +2287,6 @@ Gets a page and prints it to standard output.
 #+NAME: argparse_entries
 #+BEGIN_SRC c
 {"set", 3, p_set, NULL},
-#+END_SRC
-
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "set", 3)) {
-    argc--;
-    argv++;
-    return p_set(argc, argv);
-}
 #+END_SRC
 
 #+NAME: static_funcdefs
@@ -2395,17 +2331,6 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 {"server", 6, p_server, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-#ifdef WWSERVER
-else if (match(argv[1], len, "server", 6)) {
-    argc--;
-    argv++;
-    return p_server(argc, argv);
-}
-#endif
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 #ifdef WWSERVER
@@ -2431,15 +2356,6 @@ Runs a local instance of JPM.
 {"jpm", 3, p_jpm, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "jpm", 3)) {
-    argc--;
-    argv++;
-    return p_jpm(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_jpm(int argc, char *argv[]);
@@ -2463,19 +2379,11 @@ to =stdout= as a list of comma-separated values (CSV).
 {"keyscrape", 9, p_keyscrape, NULL},
 #+END_SRC
 
-#+NAME: matching
-#+BEGIN_SRC c
-else if (match(argv[1], len, "keyscrape", 9)) {
-    argc--;
-    argv++;
-    return p_keyscrape(argc, argv);
-}
-#+END_SRC
-
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_keyscrape(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 int ww_keyscrape(int argc, char *argv[]);
