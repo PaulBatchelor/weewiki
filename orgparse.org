@@ -2677,6 +2677,7 @@ static int parse_cmd(const char *str,
     if (str[1] != '+') return 0;
     if (str[2] == ' ') return 0;
 
+
     rc = 0;
 
     mode = 0;
@@ -2692,7 +2693,7 @@ static int parse_cmd(const char *str,
     *cmd_len = 0;
 
     for (n = 2; n < sz; n++) {
-        if (str[n] == '\n') {
+        if (str[n] == '\n' || (n == (sz - 1))) {
             *cmdstr_len = len;
             if (mode == 0) {
                 *cmd_len = len;
@@ -2790,7 +2791,7 @@ static int parse_ucmd(orgparse_state *state)
     cmdstrlen = 0;
     totallen = 0;
     rc = parse_cmd(&txt[start],
-                   sz,
+                   sz - start,
                    &cmd,
                    &cmdlen,
                    &cmdstr,
@@ -2847,7 +2848,7 @@ static int parse_codeblock(orgparse_state *state)
     cmdstrlen = 0;
     totallen = 0;
     rc = parse_cmd(&txt[start],
-                   sz,
+                   sz - start,
                    &cmd,
                    &cmdlen,
                    &cmdstr,
@@ -2928,7 +2929,7 @@ static int parse_name(orgparse_state *state)
     cmdstrlen = 0;
     totallen = 0;
     rc = parse_cmd(&txt[start],
-                   sz,
+                   sz - start,
                    &cmd,
                    &cmdlen,
                    &cmdstr,
@@ -3096,7 +3097,7 @@ static int parse_title(orgparse_state *state)
     cmdstrlen = 0;
     totallen = 0;
     rc = parse_cmd(&txt[start],
-                   sz,
+                   sz - start,
                    &cmd,
                    &cmdlen,
                    &cmdstr,
