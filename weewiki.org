@@ -2183,7 +2183,7 @@ useful for debugging scripts.
 
 #+NAME: argparse_entries
 #+BEGIN_SRC c
-{"parse", 4, p_parse, NULL},
+{"parse", 5, p_parse, NULL},
 #+END_SRC
 
 #+NAME: static_funcdefs
