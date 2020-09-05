@@ -3,7 +3,7 @@ WeeWiki is a wee little wiki engine used to generate
 personal wikis and mind maps.
 * Building
 WeeWiki is written in a literate style, and requires
-[[https://github.com/paulbatchelor/worgle][Worgle]] to
+[[https://git.sr.ht/~pbatch/worgle][Worgle]] to
 tangle files into C code. Make sure SQLite is installed
 as well.
 
