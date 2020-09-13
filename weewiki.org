@@ -322,18 +322,6 @@ int weewiki_is_server(weewiki_d *ww)
     return ww->is_server;
 }
 #+END_SRC
-*** Global Filename
-Set to be =a.db= by default.
-
-#+NAME: contents
-#+BEGIN_SRC c
-const char *dbname;
-#+END_SRC
-
-#+NAME: init
-#+BEGIN_SRC c
-weewiki_dbname_set("a.db");
-#+END_SRC
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -995,6 +983,10 @@ int weewiki_exists(weewiki_d *ww, const char *key)
 ** Name Set/Get
 Sets/gets the database name.
 
+A global variable is used outside of the global =weewiki_d=
+because it needs to be able to be set before that struct
+is initialized.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void weewiki_dbname_set(const char *name);
@@ -1003,18 +995,15 @@ const char * weewiki_dbname_get(void);
 
 #+NAME: functions
 #+BEGIN_SRC c
+static const char *g_dbname = "a.db";
 void weewiki_dbname_set(const char *name)
 {
-    weewiki_d *ww;
-    ww = weewiki_get();
-    ww->name = name;
+    g_dbname = name;
 }
 
 const char * weewiki_dbname_get(void)
 {
-    weewiki_d *ww;
-    ww = weewiki_get();
-    return ww->name;
+    return g_dbname;
 }
 #+END_SRC
 * Push/Pull
@@ -1046,7 +1035,7 @@ static int p_push(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     rc = weewiki_push(&ww, argv[1], argv[2]);
 
@@ -1080,7 +1069,7 @@ static int p_pull(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     rc = weewiki_pull(&ww, argv[1], argv[2]);
     weewiki_close(&ww);
@@ -1124,7 +1113,7 @@ static int p_edit(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     if (weewiki_exists(&ww, argv[1])) {
         fprintf(stderr, "pulling %s to %s\n", argv[1], fname);
@@ -1200,7 +1189,7 @@ static int p_ls(int argc, char *argv[])
     rc = 0;
 
     if (argc == 1) {
-        weewiki_open(&ww, "a.db");
+        weewiki_open(&ww, weewiki_dbname_get());
         sqlite3_exec(ww.db,
                     "SELECT key FROM wiki;",
                     list,
@@ -1208,7 +1197,7 @@ static int p_ls(int argc, char *argv[])
                     NULL);
     } else if (argc == 2) {
         if (!strcmp(argv[1], "links")) {
-            weewiki_open(&ww, "a.db");
+            weewiki_open(&ww, weewiki_dbname_get());
             sqlite3_exec(ww.db,
                         "SELECT key, filename FROM wikilinks;",
                         list,
@@ -1293,7 +1282,7 @@ static int p_link(int argc, char *argv[])
     if (argc >= 4) {
         weewiki_open(&ww, argv[3]);
     } else {
-        weewiki_open(&ww, "a.db");
+        weewiki_open(&ww, weewiki_dbname_get());
     }
 
     if (force) {
@@ -1365,7 +1354,7 @@ static int p_sync(int argc, char *argv[])
     if (argc == 2) {
         weewiki_open(&ww, argv[1]);
     } else {
-        weewiki_open(&ww, "a.db");
+        weewiki_open(&ww, weewiki_dbname_get());
     }
 
     rc = weewiki_sync(&ww);
@@ -1406,7 +1395,7 @@ static int p_add(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     db = ww.db;
 
@@ -1461,7 +1450,7 @@ static int p_del(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     db = ww.db;
 
@@ -1534,7 +1523,7 @@ static int p_export(int argc, char *argv[])
     rc = 0;
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     if (!rc) {
         db = ww.db;
@@ -2133,7 +2122,7 @@ static int p_dump(int argc, char *argv[])
     if (argc >= 3) {
         weewiki_open(&ww, argv[2]);
     } else {
-        weewiki_open(&ww, "a.db");
+        weewiki_open(&ww, weewiki_dbname_get());
     }
 
     db = ww.db;
@@ -2149,6 +2138,7 @@ static int p_dump(int argc, char *argv[])
                        NULL);
 
     fprintf(fp, "# open and clear wiki db\n\n");
+    /* TODO: add ww-dbname-get janet word */
     fprintf(fp, "(ww-open \"a.db\")\n");
     fprintf(fp, "(ww-clear)\n");
 
@@ -2240,7 +2230,7 @@ static int p_parse(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     weewiki_set(&ww);
 
@@ -2296,7 +2286,7 @@ static int p_get(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     rc = weewiki_getter(&ww, argv[1]);
 
@@ -2332,7 +2322,7 @@ static int p_set(int argc, char *argv[])
     }
 
     weewiki_init(&ww);
-    weewiki_open(&ww, "a.db");
+    weewiki_open(&ww, weewiki_dbname_get());
 
     rc = weewiki_setter(&ww, argv[1], argv[2]);
 
