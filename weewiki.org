@@ -322,6 +322,18 @@ int weewiki_is_server(weewiki_d *ww)
     return ww->is_server;
 }
 #+END_SRC
+*** Global Filename
+Set to be =a.db= by default.
+
+#+NAME: contents
+#+BEGIN_SRC c
+const char *dbname;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+weewiki_dbname_set("a.db");
+#+END_SRC
 ** Init
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -978,6 +990,31 @@ int weewiki_exists(weewiki_d *ww, const char *key)
 
     sqlite3_finalize(stmt);
     return rc;
+}
+#+END_SRC
+** Name Set/Get
+Sets/gets the database name.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_dbname_set(const char *name);
+const char * weewiki_dbname_get(void);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_dbname_set(const char *name)
+{
+    weewiki_d *ww;
+    ww = weewiki_get();
+    ww->name = name;
+}
+
+const char * weewiki_dbname_get(void)
+{
+    weewiki_d *ww;
+    ww = weewiki_get();
+    return ww->name;
 }
 #+END_SRC
 * Push/Pull
