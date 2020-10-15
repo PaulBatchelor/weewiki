@@ -442,3 +442,41 @@ static Janet cfun_is_server(int32_t argc, Janet *argv)
     return janet_wrap_boolean(weewiki_is_server(ww));
 }
 #+END_SRC
+** DB name set/get
+Wrappers to set/get the current database name.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_dbname_set(int32_t argc, Janet *argv);
+static Janet cfun_dbname_get(int32_t argc, Janet *argv);
+#+END_SRC
+
+#+NAME: janet_defs
+#+BEGIN_SRC c
+janet_def(env,
+          "ww-dbname-set",
+          janet_wrap_cfunction(cfun_dbname_set),
+          NULL);
+janet_def(env,
+          "ww-dbname-get",
+          janet_wrap_cfunction(cfun_dbname_get),
+          NULL);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_dbname_set(int32_t argc, Janet *argv)
+{
+    const char *str;
+    janet_fixarity(argc, 1);
+    str = (const char *)janet_getstring(argv, 0);
+    weewiki_dbname_set(str);
+    return janet_wrap_nil();
+}
+
+static Janet cfun_dbname_get(int32_t argc, Janet *argv)
+{
+    janet_fixarity(argc, 0);
+    return janet_wrap_string(weewiki_dbname_get());
+}
+#+END_SRC
