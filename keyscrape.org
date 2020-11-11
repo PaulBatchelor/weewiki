@@ -78,10 +78,13 @@ static void parse_file(const char *key, size_t keysz,
     size_t start;
     int linepos;
     int ignore;
+    const char *fs;
 
     start = 0;
     linepos = 0;
     ignore = 0;
+
+    fs = "\t";
 
     for (i = 0; i < valsz; i++) {
         char c;
@@ -118,9 +121,9 @@ static void parse_file(const char *key, size_t keysz,
                     if (wordstarted) {
                         wordstarted = 0;
                         fwrite(key, 1, keysz, fp);
-                        fprintf(fp, ":");
+                        fprintf(fp, fs);
                         fwrite(&val[wordpos], 1, wordlen, fp);
-                        fprintf(fp, ":%d\n", linepos);
+                        fprintf(fp, "%s%d\n", fs, linepos);
                     } else {
                         if ((k + 1) < valsz && val[k + 1] != ' ') {
                             wordstarted = 1;
