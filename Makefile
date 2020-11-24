@@ -16,6 +16,10 @@ OBJ+=\
 	janet/jpm.o \
 
 OBJ+=weewiki.o jan.o keyscrape.o
+
+# UUID4 library
+OBJ += uuid4/uuid4.o
+
 CFLAGS += -g -Wall -O3 -I.
 
 ifneq ($(OS), Darwin)
