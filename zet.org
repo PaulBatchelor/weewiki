@@ -1,0 +1,100 @@
+#+TITLE: zet
+* Overview
+Zet is a simple zettelkasten interface implemented in
+weewiki.
+
+Compared to the wiki, zet is more granular. Instead of
+hypertext documents connected by links, you have things
+connected to things. It is encouraged that information
+be more atomic and bite-sized.
+
+The zet will occupy a new SQLite table called "wikizet".
+Like the main wiki, it too will have a key/value schema.
+The difference in this case is that keys will not be unique.
+This allows one key to point to multiple things.
+
+A key is expected to be a uuid following the uuid4 specs.
+This is generated courtesy of the uuid4 library by rxi. the
+values are strings that can mean any number of things based
+on the first character:
+
+a "#" indicates that reference to another uuid. this is how
+connections are made.
+
+a "/" inidicates the start of a file such as /foo/bar.txt.
+The intent of this is to use it with sqlar as a way to
+reference and link files into weewiki.
+
+a "!" indicates a reference to a wiki page. This follows
+the adopted convention I've been using to reference wiki
+pages in my twtxt messages.
+
+a ">" explicitely indicates a string value.
+
+values in the zet table optionally include a timestamp
+value. This allows the zet to be used as a logging and
+microblogging interface along the lines of twtxt.
+* Tangled Files
+=zet.c= and =zet.h= are the generated files.
+* Low Level Operations
+** UUIDs
+A universally unique identifer (UUID) is used to label
+every item in the zet. The UUIDs are generated courtesy
+of the =uuid4= library by =rxi=, included inside of
+the weewiki project.
+*** UUID struct
+A full UUID contained inside of a struct called
+=wwzet_uuid=. This UUID contains a char of 37 bytes:
+36 for the UUID (including dashes) plus the null terminator.
+*** (re)-initializing a UUID
+The UUID is initialized with the function
+=wwzet_uuid_init=. This will set the UUID to be
+=00000000-0000-4000-8000-000000000000=, a valid
+but zeroed UUID4.
+*** Initializing the uuid4 RNG
+Before generating a new UUID, the RNG must be
+initialized with =wwzet_uuid_rng_init=.
+
+This makes a call to =uuid4_init=.
+*** UUID generation
+Create a new UUID with =weewiki_uuid_generate=. This uses
+the uuid version 4 protocol, which means it is randomly
+generated. This assumes the RNG has been initialized
+already.
+
+This function calls =uuid4_generate= under the hood, and
+then stores the output to the =weewiki_uuid= variable
+=uuid=.
+*** UUID expansion/validation
+Check if a partial UUID exists in the zettelkasten table,
+and expand to full UUID value. The partial value is provided
+as a null-terminated C string.
+** Create New Zet Entry
+** Create Zet Link
+Link one UUID with another UUID.
+* Command Line Operations
+** top-level processor
+The entry point for the top-level CLI is done with
+=ww_zet=.
+** say
+creates a new UUID with a timestamped message. Any arguments
+provided are expected to be partial UUIDs of pre-existing
+zet items.
+** link
+Link. Link item A to item B. A new zet pair will be made
+with the A UUID value and the B reference. A and B can be
+partial UUID values.
+** dump
+Dump. This will dump all the zet pairs a list of
+tab-separtaed values.
+** import
+Import. Imports a list of tab-separated pairs into the zet
+table.
+** lookup
+given a partial UUID, try to find the full matching
+UUID. If more than one is found. return an error.
+** info
+Gets information on a particular zet item. A partial
+UUID value can be provided.
+** search
+Performs full-text search on the zet table.
