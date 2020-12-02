@@ -7,18 +7,21 @@ OS=$(shell uname -s)
 
 # Janet objects
 OBJ+=\
-	janet/janet.o\
-	janet/init.gen.o\
-	janet/janet_main.o\
-	janet/line.o \
-	janet/janet_sqlite.o \
-	janet/jpm.gen.o \
-	janet/jpm.o \
+	janet/janet.c99\
+	janet/init.gen.c99\
+	janet/janet_main.c99\
+	janet/line.c99 \
+	janet/janet_sqlite.c99 \
+	janet/jpm.gen.c99 \
+	janet/jpm.c99 \
 
-OBJ+=weewiki.o jan.o keyscrape.o
+OBJ+=weewiki.o jan.c99 keyscrape.o
 
 # UUID4 library
 OBJ += uuid4/uuid4.o
+
+# Linenoise library
+OBJ += linenoise/linenoise.c99
 
 CFLAGS += -g -Wall -O3 -I.
 
@@ -30,7 +33,7 @@ LIBS=-lsqlite3
 
 ifeq ($(WWSERVER), 1)
 CFLAGS += -DWWSERVER
-OBJ += server.o
+OBJ += server.c99
 LIBS+=-lz
 endif
 
@@ -42,21 +45,15 @@ default: weewiki orgparse_test
 %.c: %.org
 	$(WORGLE) $<
 
-janet/%.o: janet/%.c
-	$(C99) -c $(CFLAGS) $< -o $@
-
 janet/janet_main.c: orgparse.h weewiki.c
-
-jan.o: jan.c
-	$(C99) -c $(CFLAGS) $< -o $@
-
-server.o: server.c
-	$(C99) -c $(CFLAGS) $< -o $@
 
 jan.h: jan.c
 
 %.o: %.c
 	$(C89) -c $(CFLAGS) $< -o $@
+
+%.c99: %.c
+	$(C99) -c $(CFLAGS) $< -o $@
 
 weewiki.c: orgparse.h
 weewiki.c: jan.h
