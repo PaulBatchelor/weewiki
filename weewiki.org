@@ -807,6 +807,27 @@ int weewiki_setter(weewiki_d *ww,
 }
 #+END_SRC
 ** Create Tables
+The function =weewiki_create_tables= creates all the needed
+SQLite tables needed by weewiki. This includes =wiki=,
+=wikilinks=, and =wikizet=.
+
+The =wiki= table is most important table by weewiki. It
+holds all the wiki document content. wikis are stored in
+a key-value fashion, with unique keys being the page names,
+and =text= being the page content, stored in org markup.
+
+The =wikilinks= table is used to managed all externally
+linked files. What is given here is the page name
+(the =key=), the filename path, and the unix modification
+time =mtime=. This logic is used to determine syncing.
+
+The =wikizet= table is the the weewiki zettelkasten
+interface. It is implemented using SQLites full-text
+search capabilities (fts5) as a virtual table. Similar to
+the wiki, the zet is a key/value database, except that
+the keys are UUIDs that do not have a unique constraint, and
+each entry has an optional timestamp for microblogging.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void weewiki_create_tables(weewiki_d *ww);
@@ -832,6 +853,15 @@ void weewiki_create_tables(weewiki_d *ww)
                 NULL,
                 NULL,
                 NULL);
+
+    sqlite3_exec(ww->db,
+                 "CREATE VIRTUAL TABLE wikizet using fts5("
+                 "time,\n"
+                 "UUID,\n"
+                 "value);\n",
+                 NULL,
+                 NULL,
+                 NULL);
 }
 #+END_SRC
 ** Push
