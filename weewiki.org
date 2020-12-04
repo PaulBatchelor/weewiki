@@ -1036,6 +1036,13 @@ const char * weewiki_dbname_get(void)
     return g_dbname;
 }
 #+END_SRC
+* TODO Create
+Note: WIP idea. This will slightly change the behavior
+of weewiki such that weewiki's will need to be explicitely
+created before running any other commands.
+
+=create= creates an a weewiki database in the currently
+directory. By default, this is called "a.db".
 * Push/Pull
 ** Push
 Pushes a file to database.
