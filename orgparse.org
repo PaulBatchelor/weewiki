@@ -1,5 +1,34 @@
 #+TITLE: Orgparse
+* Overview
 Orgparse is a portable org-mode parser, written in ANSI C.
+It aims to be reasonably fast, and support just enough Org
+to do simple document formatting. This includes things
+like headers, links, paragraphs, and formatting. Code blocks
+are also included to make this suitable for rendering
+literate programs written in Org (presumably written in
+Org-mode, and tangled using Worgle).
+
+This document, when tangled, will produce a single header
+file called =orgparse.h=. Defining =ORGPARSE_IMPLEMENTATION=
+will include the code, otherwise it will just be forward
+function declarations.
+
+Notably, this program is used to parse org documents in
+the weewiki wiki engine, and is included in the weewiki
+codebase.
+
+Orgparse is primarily designed to export to HTML, but it
+uses a callback interface that allows one to make other
+backends. An HTML exporting interface has been provided
+as a sensible default, and can be used as a good starting
+point for how to build a new backend.
+
+To reduce dependencies and have more granular control, this
+parser is hand-coded rather than using a parser tool.
+Building a parser this way can be fragile, so a regression
+test suite has been included in this program to ensure that
+fixed edge cases found don't accidentally end up unfixed
+while solving other edge cases.
 * Top Files
 The entirety of orgparse is contained in a single header
 file.
