@@ -1,6 +1,8 @@
 #+TITLE: Orgparse
 * Overview
-Orgparse is a portable parser org markup, written in ANSI C.
+Orgparse is a portable parser for org markup, written in
+ANSI C.
+
 It aims to be reasonably fast, and support just enough Org
 to do simple document formatting. This includes things
 like headers, links, paragraphs, and formatting. Code blocks
