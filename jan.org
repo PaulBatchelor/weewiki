@@ -1,5 +1,9 @@
 #+TITLE: Janet
-For all things related to Janet.
+* Overview
+This document is in charge of handling integration between
+Janet and Weewiki. This consists of two main things: adding
+weewiki functions to Janet, and handling inline janet code
+in weewiki documents.
 * Top Level Files
 
 #+NAME: jan.c
