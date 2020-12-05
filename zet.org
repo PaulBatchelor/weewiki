@@ -394,6 +394,8 @@ int ww_zet(int argc, char *argv[])
         return p_say(argc, argv);
     } else if (!strcmp(argv[0], "export")) {
         return p_export(argc, argv);
+    } else if (!strcmp(argv[0], "import")) {
+        return p_import(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[1]);
     }
@@ -502,10 +504,11 @@ static int p_export(int argc, char *argv[])
     rc = sqlite3_step(stmt);
 
     while (rc == SQLITE_ROW) {
+        const char *t = (const char *)sqlite3_column_text(stmt, 0);
         printf("%s\t%s\t%s\n",
-               sqlite3_column_text(stmt,0),
-               sqlite3_column_text(stmt,1),
-               sqlite3_column_text(stmt,2));
+               (t == NULL) ? "-" : t,
+               sqlite3_column_text(stmt, 1),
+               sqlite3_column_text(stmt, 2));
         rc = sqlite3_step(stmt);
     }
 
@@ -518,15 +521,128 @@ static int p_export(int argc, char *argv[])
 ** import
 Import. Imports a list of tab-separated pairs into the zet
 table.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_import(int argc, char *argv[]);
+#+END_SRC
+
+This import is very generalized, and will parse any
+3-column TSV file without validation. It is assumed that
+the input comes from a previous export.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void import_line(weewiki_d *ww, const char *line, int sz)
+{
+    int pos;
+    int i;
+    const char *val[3];
+    int vlen[3];
+    int count;
+
+
+    sz--; /* chomp line break */
+    /* fprintf(stdout, "line: "); */
+    /* fwrite(line, 1, sz, stdout); */
+
+
+    for (i = 0; i < 3; i++) {
+        val[i] = NULL;
+        vlen[i] = 0;
+    }
+
+    pos = 0;
+    val[pos] = &line[0];
+    count = 1;
+
+    for (i = 0; i < sz; i++) {
+        if (line[i] == '\t') {
+            vlen[pos] = count - 1;
+            val[pos + 1] = &line[i + 1];
+            pos++;
+            count = 0;
+            if (pos >= 3) break;
+        }
+        count++;
+    }
+
+    /* wrap-up, address last count, minus linebreak */
+    vlen[2] = count - 1;
+
+    /* set timestamp to NULL if input is '-' */
+
+    if (*val[0] == '-') {
+        val[0] = NULL;
+        vlen[0] = 1;
+    }
+
+    wwzet_insert(ww,
+                 val[0], vlen[0],
+                 val[1], vlen[1],
+                 val[2], vlen[2]);
+}
+
+static int p_import(int argc, char *argv[])
+{
+    FILE *fp;
+    char *buf;
+    int sz;
+    char c;
+    weewiki_d *ww;
+    sqlite3 *db;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+
+    fp = stdin;
+
+    sz = 0;
+
+    buf = calloc(1, 1024);
+
+    sqlite3_exec(db, "BEGIN;\n", NULL, NULL, NULL);
+
+    while (1) {
+        c = fgetc(fp);
+        if (feof(fp)) break;
+        buf[sz] = c;
+        sz++;
+
+        if (sz == 1023) {
+           fprintf(stderr, "import buffer size too small\n");
+           goto clean;
+        }
+
+        if (c == '\n') {
+           import_line(ww, buf, sz);
+           sz = 0;
+        }
+    }
+
+    sqlite3_exec(db, "COMMIT;\n", NULL, NULL, NULL);
+
+    clean:
+    free(buf);
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return 0;
+}
+#+END_SRC
+** info
+Gets information on a particular zet item. A partial
+UUID value can be provided.
 ** link
 Link. Link item A to item B. A new zet pair will be made
 with the A UUID value and the B reference. A and B can be
 partial UUID values.
+** search
+Performs full-text search on the zet table.
 ** lookup
 given a partial UUID, try to find the full matching
 UUID. If more than one is found. return an error.
-** info
-Gets information on a particular zet item. A partial
-UUID value can be provided.
-** search
-Performs full-text search on the zet table.
