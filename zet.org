@@ -265,8 +265,11 @@ int ww_zet(int argc, char *argv[])
     }
 
     argv++; argc--;
+
     if (!strcmp(argv[0], "say")) {
         return p_say(argc, argv);
+    } else if (!strcmp(argv[0], "export")) {
+        return p_export(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[1]);
     }
@@ -281,12 +284,12 @@ zet items.
 
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-int p_say(int argc, char *argv[]);
+static int p_say(int argc, char *argv[]);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
-int p_say(int argc, char *argv[])
+static int p_say(int argc, char *argv[])
 {
     char *line;
 
@@ -318,8 +321,56 @@ int p_say(int argc, char *argv[])
 }
 #+END_SRC
 ** export
-Export. This will dump all the zet pairs a list of
-tab-separtaed values.
+Export. This will dump all the zet pairs as list of
+tab-separated values to stdout. The idea would then be that
+this information could then be processed further by
+some external program.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT time,UUID,value from wikizet;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        printf("%s\t%s\t%s\n",
+               sqlite3_column_text(stmt,0),
+               sqlite3_column_text(stmt,1),
+               sqlite3_column_text(stmt,2));
+        rc = sqlite3_step(stmt);
+    }
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return 0;
+}
+#+END_SRC
+
+
 ** import
 Import. Imports a list of tab-separated pairs into the zet
 table.
