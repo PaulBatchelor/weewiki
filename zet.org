@@ -167,7 +167,7 @@ int wwzet_uuid_expand(weewiki_d *ww,
 The following SQLite3 statement is used:
 
 #+BEGIN_SRC sqlite
-SELECT UUID, COUNT(*) from wikizet where UUID LIKE(?1);
+SELECT UUID, COUNT(DISTINCT UUID) from wikizet where UUID LIKE(?1);
 #+END_SRC
 
 Where "?1" is the partial match.
@@ -200,7 +200,7 @@ int wwzet_uuid_expand(weewiki_d *ww,
     db = weewiki_db(ww);
 
     sqlite3_prepare_v2(db,
-                       "SELECT UUID, COUNT(*) FROM wikizet "
+                       "SELECT UUID, COUNT(DISTINCT UUID) FROM wikizet "
                        "WHERE UUID LIKE(?1);",
                        -1, &stmt, NULL);
 
