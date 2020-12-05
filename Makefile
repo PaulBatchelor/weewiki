@@ -23,7 +23,7 @@ OBJ += uuid4/uuid4.o
 # Linenoise library (with musl strdup)
 OBJ += linenoise/linenoise.c99
 
-CFLAGS += -g -Wall -O0 -I.
+CFLAGS += -g -Wall -O3 -I.
 
 ifneq ($(OS), Darwin)
 CFLAGS += -Wl,--export-dynamic
