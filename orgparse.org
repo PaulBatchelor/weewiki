@@ -1587,8 +1587,8 @@ void orgparse_set_codeblock(orgparse *op, orgparse_text f)
 }
 #+END_SRC
 *** Aux
-A special non-org tag, used for interpolated code in tags !@
-and @!.
+A special non-org tag, used for interpolated code in tags =@!=
+and =!@=.
 #+NAME: interface
 #+BEGIN_SRC c
 orgparse_text aux;
@@ -2979,7 +2979,7 @@ static int parse_name(orgparse_state *state)
 }
 #+END_SRC
 ** Parsing an Aux Block
-An aux block is anything inside of a '@!' and '!@'.
+An aux block is anything inside of a =@!= and =!@=.
 For WeeWiki, the idea here is to execute janet code for
 dynamic page content. Aux blocks can be both in-line and
 multiline. They start out inside of a text block, but have
@@ -2988,7 +2988,7 @@ blocks).
 *** Beginning a Block
 **** Checking for an Aux Block
 An aux block can be started at anytime inside of a text
-block. The parsing process here must check for any '@!'
+block. The parsing process here must check for any =@!=
 roaming around. This is wrapped inside of a function called
 =parse_aux_check=. It is called inside of =parse_text=.
 #+NAME: static_funcdefs
