@@ -36,6 +36,26 @@ value. This allows the zet to be used as a logging and
 microblogging interface along the lines of twtxt.
 * Tangled Files
 =zet.c= and =zet.h= are the generated files.
+
+#+NAME: zet.c
+#+BEGIN_SRC c :tangle zet.c
+#include <stdio.h>
+#include <sqlite3.h>
+#include "uuid4/uuid4.h"
+#include "weewiki.h"
+#include "zet.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: zet.h
+#+BEGIN_SRC c :tangle zet.h
+#ifndef ZET_H
+#define ZET_H
+<<typedefs>>
+<<funcdefs>>
+<<structs>>
+#endif
+#+END_SRC
 * Low Level Operations
 ** UUIDs
 A universally unique identifer (UUID) is used to label
@@ -44,52 +64,176 @@ of the =uuid4= library by =rxi=, included inside of
 the weewiki project.
 *** UUID struct
 A full UUID contained inside of a struct called
-=wwzet_uuid=. This UUID contains a char of 37 bytes:
+=wwzet_uuid=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct wwzet_uuid wwzet_uuid;
+#+END_SRC
+
+This UUID contains a char of 37 bytes:
 36 for the UUID (including dashes) plus the null terminator.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct wwzet_uuid {
+    char str[37];
+};
+#+END_SRC
 *** (re)-initializing a UUID
 The UUID is initialized with the function
 =wwzet_uuid_init=. This will set the UUID to be
 =00000000-0000-4000-8000-000000000000=, a valid
 but zeroed UUID4.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_uuid_init(wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_uuid_init(wwzet_uuid *uuid)
+{
+    int i;
+    static const char *zero =
+        "00000000-0000-4000-8000-000000000000";
+
+    for (i = 0; i < 36; i++) uuid->str[i] = zero[i];
+    uuid->str[36] = 0;
+}
+#+END_SRC
 *** Initializing the uuid4 RNG
 Before generating a new UUID, the RNG must be
 initialized with =wwzet_uuid_rng_init=.
 
 This makes a call to =uuid4_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_uuid_rng_init(void);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_uuid_rng_init(void)
+{
+    uuid4_init();
+}
+#+END_SRC
 *** UUID generation
-Create a new UUID with =weewiki_uuid_generate=. This uses
+Create a new UUID with =wwzet_uuid_generate=. This uses
 the uuid version 4 protocol, which means it is randomly
 generated. This assumes the RNG has been initialized
 already.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_uuid_generate(wwzet_uuid *uuid);
+#+END_SRC
+
 This function calls =uuid4_generate= under the hood, and
-then stores the output to the =weewiki_uuid= variable
+then stores the output to the =wwzet_uuid= variable
 =uuid=.
-*** UUID expansion/validation
-Check if a partial UUID exists in the zettelkasten table,
-and expand to full UUID value. The partial value is provided
-as a null-terminated C string.
-** Create New Zet Entry
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_uuid_generate(wwzet_uuid *uuid)
+{
+    uuid4_generate(uuid->str);
+}
+#+END_SRC
+*** TODO UUID expansion/validation
+=wwzet_uuid_expand= will check if a partial UUID exists in
+the zettelkasten table, and expand to full UUID value.
+The partial value is provided as a null-terminated C string.
+
+Any non-zero value will be considered an error.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_uuid_expand(const char *partial,
+                      int sz,
+                      wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_uuid_expand(const char *partial,
+                      int sz,
+                      wwzet_uuid *uuid)
+{
+    /* TODO: implement */
+    return -1;
+}
+#+END_SRC
+** Create Zet Message
+The function =wwzet_message= will create a
+timestamped entry with a message in the zet table
+with a new UUID.
+
+What is required is the main weewiki data, message, as well
+as the message length. The resulting UUID will get placed in
+the supplied UUID pointer if it is not NULL.
+
+Be sure to open the database and initialize the UUID4 RNG
+before calling this.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_message(weewiki_d *ww,
+                  const char *msg,
+                  int sz,
+                  wwzet_uuid *uuid);
+#+END_SRC
+
+Under the hood, this will generate a UUID and create an
+insert SQLite statement using the SQLite API.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_message(weewiki_d *ww,
+                  const char *msg,
+                  int sz,
+                  wwzet_uuid *uuid)
+{
+    return -1;
+}
+#+END_SRC
 ** Create Zet Link
 Link one UUID with another UUID.
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
 =ww_zet=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int ww_zet(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int ww_zet(int argc, char *argv[])
+{
+    fprintf(stderr, "zet is not home. come back later.\n");
+    return 1;
+}
+#+END_SRC
 ** say
 creates a new UUID with a timestamped message. Any arguments
 provided are expected to be partial UUIDs of pre-existing
 zet items.
-** link
-Link. Link item A to item B. A new zet pair will be made
-with the A UUID value and the B reference. A and B can be
-partial UUID values.
-** dump
-Dump. This will dump all the zet pairs a list of
+** export
+Export. This will dump all the zet pairs a list of
 tab-separtaed values.
 ** import
 Import. Imports a list of tab-separated pairs into the zet
 table.
+** link
+Link. Link item A to item B. A new zet pair will be made
+with the A UUID value and the B reference. A and B can be
+partial UUID values.
 ** lookup
 given a partial UUID, try to find the full matching
 UUID. If more than one is found. return an error.

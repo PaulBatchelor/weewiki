@@ -1606,10 +1606,21 @@ struct weewiki_export_d {
 ** Orgparse callback setup
 Orgparse is used to parse a text buffer and generate HTML
 content. To do this, a series of callbacks are implemented.
+
+=weewiki_orgparse_setup= is enclosed in a ifdef macro
+for =ORGPARSE_H=. This is done so that =orgparse.h= need
+not be explicitely included if it not needed.
+
+Honestly, this sort of practice a slippery slope, but
+in moderation it is quite convenient.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
+#ifdef ORGPARSE_H /* define if orgparse header included */
 void weewiki_orgparse_setup(orgparse *op);
+#endif
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 <<orgparse_callbacks>>
@@ -2443,5 +2454,27 @@ int ww_keyscrape(int argc, char *argv[]);
 static int p_keyscrape(int argc, char *argv[])
 {
     return ww_keyscrape(argc, argv);
+}
+#+END_SRC
+* Zet
+Zet is the weewiki zettelkasten. This is the entry point
+for the zet command-line interface.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"zet", 3, p_zet, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_zet(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+int ww_zet(int argc, char *argv[]);
+static int p_zet(int argc, char *argv[])
+{
+    return ww_zet(argc, argv);
 }
 #+END_SRC
