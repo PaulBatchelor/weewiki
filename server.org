@@ -58,7 +58,7 @@ int weewiki_server(weewiki_d *ww, int argc, char *argv[]);
 #+BEGIN_SRC c
 static int running = 1;
 
-static void quit (int sig)
+static void quit(int sig)
 {
     running = 0;
     printf("Signal Interrupt\n");

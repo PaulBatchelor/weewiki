@@ -41,9 +41,13 @@ microblogging interface along the lines of twtxt.
 #+BEGIN_SRC c :tangle zet.c
 #include <stdio.h>
 #include <sqlite3.h>
+#include <string.h>
+#include <stdlib.h>
+#include <signal.h>
 #include "uuid4/uuid4.h"
 #include "weewiki.h"
 #include "zet.h"
+<<static_funcdefs>>
 <<funcs>>
 #+END_SRC
 
@@ -217,6 +221,19 @@ int ww_zet(int argc, char *argv[]);
 int ww_zet(int argc, char *argv[])
 {
     fprintf(stderr, "zet is not home. come back later.\n");
+
+    if (argc <= 1) {
+        fprintf(stderr, "Zet: supply a command\n");
+        return 1;
+    }
+
+    argv++; argc--;
+    if (!strcmp(argv[0], "say")) {
+        return p_say(argc, argv);
+    } else {
+        fprintf(stderr, "Could not find command '%s'\n", argv[1]);
+    }
+
     return 1;
 }
 #+END_SRC
@@ -224,6 +241,34 @@ int ww_zet(int argc, char *argv[])
 creates a new UUID with a timestamped message. Any arguments
 provided are expected to be partial UUIDs of pre-existing
 zet items.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+int p_say(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int say_run = 0;
+static char *say_linebuf = NULL;
+
+static void quit(int sig)
+{
+    printf("nevermind...\n");
+    say_run = 0;
+    fputc(4, stdin);
+    if (say_linebuf != NULL) {
+        free(say_linebuf);
+        say_linebuf = NULL;
+    }
+}
+
+int p_say(int argc, char *argv[])
+{
+    printf("we're not here yet...\n");
+    return 1;
+}
+#+END_SRC
 ** export
 Export. This will dump all the zet pairs a list of
 tab-separtaed values.
