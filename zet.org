@@ -47,6 +47,7 @@ microblogging interface along the lines of twtxt.
 #include "uuid4/uuid4.h"
 #include "weewiki.h"
 #include "zet.h"
+#include "linenoise/linenoise.h"
 <<static_funcdefs>>
 <<funcs>>
 #+END_SRC
@@ -249,23 +250,34 @@ int p_say(int argc, char *argv[]);
 
 #+NAME: funcs
 #+BEGIN_SRC c
-static int say_run = 0;
-static char *say_linebuf = NULL;
-
-static void quit(int sig)
-{
-    printf("nevermind...\n");
-    say_run = 0;
-    fputc(4, stdin);
-    if (say_linebuf != NULL) {
-        free(say_linebuf);
-        say_linebuf = NULL;
+void completion(const char *buf, linenoiseCompletions *lc) {
+    if (buf[0] == 'h') {
+        linenoiseAddCompletion(lc,"hello");
+        linenoiseAddCompletion(lc,"hello there");
     }
+}
+
+char *hints(const char *buf, int *color, int *bold) {
+    if (!strcasecmp(buf,"hello")) {
+        *color = 35;
+        *bold = 0;
+        return " World";
+    }
+    return NULL;
 }
 
 int p_say(int argc, char *argv[])
 {
-    printf("we're not here yet...\n");
+    char *line;
+
+    line = linenoise("say: ");
+
+    if (line != NULL) {
+        fprintf(stderr, "I said '%s'\n", line);
+        free(line);
+        return 0;
+    }
+
     return 1;
 }
 #+END_SRC

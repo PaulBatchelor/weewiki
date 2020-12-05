@@ -20,6 +20,9 @@ OBJ+=weewiki.o jan.c99 keyscrape.o zet.o
 # UUID4 library
 OBJ += uuid4/uuid4.o
 
+# Linenoise library (with musl strdup)
+OBJ += linenoise/linenoise.c99
+
 CFLAGS += -g -Wall -O0 -I.
 
 ifneq ($(OS), Darwin)
