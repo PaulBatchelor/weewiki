@@ -148,7 +148,7 @@ void wwzet_uuid_generate(wwzet_uuid *uuid)
     uuid4_generate(uuid->str);
 }
 #+END_SRC
-*** TODO UUID expansion/validation
+*** UUID expansion/validation
 =wwzet_uuid_expand= will check if a partial UUID exists in
 the zettelkasten table, and expand to full UUID value.
 The partial value is provided as a null-terminated C string.
@@ -302,7 +302,73 @@ int wwzet_message(weewiki_d *ww,
 }
 #+END_SRC
 ** Create Zet Link
-Link one UUID with another UUID.
+The function =wwzet_link= will link UUID A to
+UUID B.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_link(weewiki_d *ww, wwzet_uuid *a, wwzet_uuid *b);
+#+END_SRC
+
+A link is created by creating a new entry using A's UUID,
+and having the value be the UUID of B. A UUID is prepended
+with a '#'.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_link(weewiki_d *ww, wwzet_uuid *a, wwzet_uuid *b)
+{
+    char *addr;
+
+    addr = calloc(1, 38);
+    addr[0] = '#';
+    strcpy(&addr[1], b->str);
+    wwzet_insert(ww, NULL, 0, a->str, 36, addr, 37);
+    free(addr);
+}
+#+END_SRC
+** Insert an Entry
+The function =wwzet_insert= will perform a low-level
+insert command into the wikizet table.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_insert(weewiki_d *ww,
+                  const char *timestamp, int tlen,
+                  const char *uuid, int ulen,
+                  const char *value, int vlen);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_insert(weewiki_d *ww,
+                  const char *timestamp, int tlen,
+                  const char *uuid, int ilen,
+                  const char *value, int vlen)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "INSERT into wikizet(time,uuid,value) "
+                       "VALUES(?1,?2,?3);",
+                       -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, timestamp, tlen, NULL);
+    sqlite3_bind_text(stmt, 2, uuid, ilen, NULL);
+    sqlite3_bind_text(stmt, 3, value, vlen, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
@@ -378,8 +444,6 @@ static int p_say(int argc, char *argv[])
                 part = argv[p];
 
                 wwzet_uuid_init(&res);
-                printf("resolving '%s'\n", part);
-
                 m = wwzet_uuid_expand(ww, part, strlen(part), &res);
 
                 if (m == 0) {
@@ -387,7 +451,7 @@ static int p_say(int argc, char *argv[])
                 } else if (m > 1) {
                     fprintf(stderr, "'%s' is not unique\n", part);
                 } else {
-                    fprintf(stderr, "Found '%s'\n", res.str);
+                    wwzet_link(ww, &uuid, &res);
                 }
             }
         }
