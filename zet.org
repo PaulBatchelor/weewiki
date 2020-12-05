@@ -153,23 +153,81 @@ void wwzet_uuid_generate(wwzet_uuid *uuid)
 the zettelkasten table, and expand to full UUID value.
 The partial value is provided as a null-terminated C string.
 
-Any non-zero value will be considered an error.
+The number of matches is returned. Anything not equal to
+1 is considered an error.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int wwzet_uuid_expand(const char *partial,
+int wwzet_uuid_expand(weewiki_d *ww,
+                      const char *partial,
                       int sz,
                       wwzet_uuid *uuid);
 #+END_SRC
 
+The following SQLite3 statement is used:
+
+#+BEGIN_SRC sqlite
+SELECT UUID, COUNT(*) from wikizet where UUID LIKE(?1);
+#+END_SRC
+
+Where "?1" is the partial match.
+
+This query will return a single row with the first found
+wikizet, and the number of matches.
+
+Actions will only happen when there is exactly 1 match.
+This involves copying over the UUID value into the
+variable.
+
 #+NAME: funcs
 #+BEGIN_SRC c
-int wwzet_uuid_expand(const char *partial,
+int wwzet_uuid_expand(weewiki_d *ww,
+                      const char *partial,
                       int sz,
                       wwzet_uuid *uuid)
 {
-    /* TODO: implement */
-    return -1;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    char *matchstr;
+    int nmatches;
+
+    matchstr = calloc(1, sz + 2);
+
+    strcpy(matchstr, partial);
+    matchstr[sz] = '%';
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT UUID, COUNT(*) FROM wikizet "
+                       "WHERE UUID LIKE(?1);",
+                       -1, &stmt, NULL);
+
+    sqlite3_bind_text(stmt, 1, matchstr, sz + 1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        free(matchstr);
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    nmatches = sqlite3_column_int(stmt, 1);
+
+    if (nmatches == 1) {
+        int i;
+        const char *str;
+        str = (const char *)sqlite3_column_text(stmt, 0);
+
+        for (i = 0; i < 36; i++) uuid->str[i] = str[i];
+    }
+
+    free(matchstr);
+    sqlite3_finalize(stmt);
+    return nmatches;
 }
 #+END_SRC
 ** Create Zet Message
@@ -310,6 +368,30 @@ static int p_say(int argc, char *argv[])
 
         if (!rc) printf("%s\n", uuid.str);
 
+        if (argc > 1) {
+            wwzet_uuid res;
+            int p;
+
+            for (p = 1; p < argc; p++) {
+                const char *part;
+                int m;
+                part = argv[p];
+
+                wwzet_uuid_init(&res);
+                printf("resolving '%s'\n", part);
+
+                m = wwzet_uuid_expand(ww, part, strlen(part), &res);
+
+                if (m == 0) {
+                    fprintf(stderr, "could not expand '%s'\n", part);
+                } else if (m > 1) {
+                    fprintf(stderr, "'%s' is not unique\n", part);
+                } else {
+                    fprintf(stderr, "Found '%s'\n", res.str);
+                }
+            }
+        }
+
         weewiki_close(ww);
         weewiki_clean(ww);
         free(line);
@@ -369,8 +451,6 @@ static int p_export(int argc, char *argv[])
     return 0;
 }
 #+END_SRC
-
-
 ** import
 Import. Imports a list of tab-separated pairs into the zet
 table.
