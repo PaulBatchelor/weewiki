@@ -202,7 +202,45 @@ int wwzet_message(weewiki_d *ww,
                   int sz,
                   wwzet_uuid *uuid)
 {
-    return -1;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    wwzet_uuid id;
+    int rc;
+    char *val;
+
+    val = malloc(sz + 2);
+
+    val[0] = '>';
+
+    strcpy(&val[1], msg);
+    wwzet_uuid_init(&id);
+    db = weewiki_db(ww);
+    wwzet_uuid_generate(&id);
+
+    sqlite3_prepare_v2(db,
+                       "INSERT INTO "
+                       "wikizet(time, UUID, value)"
+                       "VALUES(datetime(), ?1, ?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, id.str, -1, NULL);
+    sqlite3_bind_text(stmt, 2, val, sz + 1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        free(val);
+        return 1;
+    }
+
+    if (uuid != NULL) *uuid = id;
+
+    free(val);
+    sqlite3_finalize(stmt);
+    return 0;
 }
 #+END_SRC
 ** Create Zet Link
@@ -221,8 +259,6 @@ int ww_zet(int argc, char *argv[]);
 #+BEGIN_SRC c
 int ww_zet(int argc, char *argv[])
 {
-    fprintf(stderr, "zet is not home. come back later.\n");
-
     if (argc <= 1) {
         fprintf(stderr, "Zet: supply a command\n");
         return 1;
@@ -250,22 +286,6 @@ int p_say(int argc, char *argv[]);
 
 #+NAME: funcs
 #+BEGIN_SRC c
-void completion(const char *buf, linenoiseCompletions *lc) {
-    if (buf[0] == 'h') {
-        linenoiseAddCompletion(lc,"hello");
-        linenoiseAddCompletion(lc,"hello there");
-    }
-}
-
-char *hints(const char *buf, int *color, int *bold) {
-    if (!strcasecmp(buf,"hello")) {
-        *color = 35;
-        *bold = 0;
-        return " World";
-    }
-    return NULL;
-}
-
 int p_say(int argc, char *argv[])
 {
     char *line;
@@ -273,8 +293,24 @@ int p_say(int argc, char *argv[])
     line = linenoise("say: ");
 
     if (line != NULL) {
-        fprintf(stderr, "I said '%s'\n", line);
+        weewiki_d *ww;
+        wwzet_uuid uuid;
+        int rc;
+
+        ww = malloc(weewiki_sizeof());
+        weewiki_init(ww);
+        weewiki_open(ww, weewiki_dbname_get());
+
+        wwzet_uuid_rng_init();
+        wwzet_uuid_init(&uuid);
+        rc = wwzet_message(ww, line, strlen(line), &uuid);
+
+        if (!rc) printf("%s\n", uuid.str);
+
+        weewiki_close(ww);
+        weewiki_clean(ww);
         free(line);
+        free(ww);
         return 0;
     }
 
