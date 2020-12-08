@@ -1,0 +1,63 @@
+#+TITLE: crate
+* Overview
+the weewiki crate interface provides some functionality on
+top of SQLar, with a slant towards annotating and curating
+audio samples (WAV files). Crates provide a bridge from
+SQLar to weewiki, and allow files to connect with ecosystem
+without having the full files actually be there.
+
+The crate interface abstracts away files and filenames,
+including folder hierarchy structures. This allows for files
+to be re-arranged and named in any way that matters. SQLar
+and crate will internally preserve the original filenames
+and paths.
+
+Unlike other weewiki operations, every crate operation must
+explicitly specify the weewiki database. Weewiki is
+typically run from the top-level directory where the
+database is. This is rarely the case when using crate.
+
+Crate works by taking all files in a SQLar database and
+importing references of them into the weewiki zettelkasten.
+From there, individual samples can be annotated using all
+the zet facilities. 
+
+Every file that gets imported is assigned an item UUID in
+the zet, which gets tied to the filepath in the SQLar
+database. In addition, a new group is created for that
+SQLar archive, and every file path is tied to that group.
+Groups in the zet are denoted with an ampersand ('@')
+prefix.
+
+Once in the Zet, file references can be exported to a
+TSV file containing metadata. From this metadata, actual
+files can be extracted from the SQLar database. Metadata
+is intended to be managed inside of source control systems
+such as Fossil or Git.
+
+SQLar archives are copied over into a weewiki database via
+a SQLite script. They don't always have to be present. This
+saves on disk space. Only use what is currently needed.
+* Generated Files
+=crate.c= I think is fine? Note that crate will use some
+functionality from zet.
+* Operations
+** Import
+Usage: import a.db foo.sqlar
+
+Import a SQLar archive into the zet. Doing th is
+also creates a metafile for every file in the archive, so
+this should be run in a new directory.
+** Export
+Usage: export a.db file_pattern
+
+Exports metadata based on a SQLite file pattern. This
+will save information as tab-separated key value pairs.
+The filenames used will be their UUID.
+** Extract
+Extracts a file using the metadata file.
+** Copy
+Usage: copy a.db foo.sqlar
+
+Copy a SQLar archive =foo.sqlar= to a weewiki database
+=a.db=.
