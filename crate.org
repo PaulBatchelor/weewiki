@@ -51,9 +51,11 @@ a non-issue).
 #+NAME: crate.c
 #+BEGIN_SRC c :tangle crate.c
 #include <stdio.h>
+#include <string.h>
 #include "weewiki.h"
 #include "zet.h"
 <<funcdefs>>
+<<static_funcdefs>>
 <<funcs>>
 #+END_SRC
 * Operations
@@ -72,8 +74,30 @@ int ww_crate(int argc, char *argv[]);
 #+BEGIN_SRC c
 int ww_crate(int argc, char *argv[])
 {
-    /* TODO: implement */
+    const char *cmd;
+
     fprintf(stderr, "Go away. Come back later.\n");
+
+    if (argc <= 1) {
+        fprintf(stderr, "Crate: supply a command\n");
+        return -1;
+    }
+
+    cmd = argv[1];
+
+    argv++;
+    argc--;
+
+    if (!strcmp(cmd, "import")) {
+        p_import(argc, argv);
+    } else if (!strcmp(cmd, "export")) {
+        p_export(argc, argv);
+    } else if (!strcmp(cmd, "extract")) {
+        p_extract(argc, argv);
+    } else {
+        fprintf(stderr, "Crate: could not find command '%s'\n", cmd);
+    }
+    /* TODO: implement */
     return -1;
 }
 #+END_SRC
@@ -83,14 +107,81 @@ Usage: import a.db foo.sqlar
 Import a SQLar archive into the zet. Doing th is
 also creates a metafile for every file in the archive, so
 this should be run in a new directory.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_import(int argc, char *argv[]);
+#+END_SRC
+
+Import assumes that the SQLar archive and the weewiki
+database are two separate files. Both are SQLite databases.
+The weewiki database gets opened up using weewiki
+abstractions. SQLar gets opened up directly using the SQLite
+API.
+
+The name of the game here is to take the =name= column from
+the SQLar sqlite table, and use that to create file zet
+entries in the weewiki database.
+
+Before inserting file entries, a new group entry is created
+with the name of the SQLar archive. When a new file entry is
+created, its UUID gets linked with the UUID of the group.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_import(int argc, char *argv[])
+{
+    const char *db_name;
+    const char *sqlar_name;
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s a.db foo.sqlar\n", argv[0]);
+        return 1;
+    }
+    fprintf(stderr, "not implemented. %d\n", argc);
+
+    db_name = argv[1];
+    sqlar_name = argv[2];
+
+    fprintf(stderr, "importing %s into %s\n", db_name, sqlar_name);
+    return 1;
+}
+#+END_SRC
 ** Export
 Usage: export a.db file_pattern
 
 Exports metadata based on a SQLite file pattern. This
 will save information as tab-separated key value pairs.
 The filenames used will be their UUID.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_export(int argc, char *argv[])
+{
+    fprintf(stderr, "not implemented.\n");
+    return 1;
+}
+#+END_SRC
 ** Extract
 Extracts a file using the metadata file.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_extract(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_extract(int argc, char *argv[])
+{
+    fprintf(stderr, "not implemented.\n");
+    return 1;
+}
+#+END_SRC
 ** Copy
 Usage: copy a.db foo.sqlar
 

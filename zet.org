@@ -230,6 +230,56 @@ int wwzet_uuid_expand(weewiki_d *ww,
     return nmatches;
 }
 #+END_SRC
+** Create Zet Entry
+=wwzet_entry= creates a generic zet entry given a message
+and timestamps it based on the current system time.
+
+If =uuid= is not NULL, the generated UUID is saved here.
+It is assumed the uuid RNG is initialized already before
+calling this function.
+** Insert an Entry
+The function =wwzet_insert= will perform a low-level
+insert command into the wikizet table. The timestamp,
+uuid, and value should already be generated or known.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_insert(weewiki_d *ww,
+                  const char *timestamp, int tlen,
+                  const char *uuid, int ulen,
+                  const char *value, int vlen);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void wwzet_insert(weewiki_d *ww,
+                  const char *timestamp, int tlen,
+                  const char *uuid, int ilen,
+                  const char *value, int vlen)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "INSERT into wikizet(time,uuid,value) "
+                       "VALUES(?1,?2,?3);",
+                       -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, timestamp, tlen, NULL);
+    sqlite3_bind_text(stmt, 2, uuid, ilen, NULL);
+    sqlite3_bind_text(stmt, 3, value, vlen, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
 ** Create Zet Message
 The function =wwzet_message= will create a
 timestamped entry with a message in the zet table
@@ -327,48 +377,22 @@ void wwzet_link(weewiki_d *ww, wwzet_uuid *a, wwzet_uuid *b)
     free(addr);
 }
 #+END_SRC
-** Insert an Entry
-The function =wwzet_insert= will perform a low-level
-insert command into the wikizet table.
+** Create Zet File
+A file entry is created with =wwzet_file=.
 
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void wwzet_insert(weewiki_d *ww,
-                  const char *timestamp, int tlen,
-                  const char *uuid, int ulen,
-                  const char *value, int vlen);
-#+END_SRC
+An inserted file is not actually the file, but just
+a file path, prepended with a forward slash =/=.
+Presumably, this would link to an entry in the SQLar table
+(which do not have leading slashes). Thus, an entry
+=/test/foo.txt= would have a corresponding SQLar file
+=test/foo.txt=.
+** Create Zet Group
+A group entry is created with =wwzet_group=.
 
-#+NAME: funcs
-#+BEGIN_SRC c
-void wwzet_insert(weewiki_d *ww,
-                  const char *timestamp, int tlen,
-                  const char *uuid, int ilen,
-                  const char *value, int vlen)
-{
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-    int rc;
+Groups are used with the crate interface, and are used
+to link files to specific sqlar archives.
 
-    db = weewiki_db(ww);
-
-    sqlite3_prepare_v2(db,
-                       "INSERT into wikizet(time,uuid,value) "
-                       "VALUES(?1,?2,?3);",
-                       -1, &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, timestamp, tlen, NULL);
-    sqlite3_bind_text(stmt, 2, uuid, ilen, NULL);
-    sqlite3_bind_text(stmt, 3, value, vlen, NULL);
-
-    rc = sqlite3_step(stmt);
-
-    if (rc != SQLITE_DONE) {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
-    }
-
-    sqlite3_finalize(stmt);
-}
-#+END_SRC
+Groups are prefixed with '@'.
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
