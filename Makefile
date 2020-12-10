@@ -15,7 +15,7 @@ OBJ+=\
 	janet/jpm.gen.c99 \
 	janet/jpm.c99 \
 
-OBJ+=weewiki.o jan.c99 keyscrape.o zet.o
+OBJ+=weewiki.o jan.c99 keyscrape.o zet.o crate.o
 
 # UUID4 library
 OBJ += uuid4/uuid4.o

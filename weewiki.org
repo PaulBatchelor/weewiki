@@ -2478,3 +2478,25 @@ static int p_zet(int argc, char *argv[])
     return ww_zet(argc, argv);
 }
 #+END_SRC
+* Crate
+The =crate= is a interface that connects the SQLar
+format to the weewiki zettelkasten.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"crate", 5, p_crate, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_crate(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+int ww_crate(int argc, char *argv[]);
+static int p_crate(int argc, char *argv[])
+{
+    return ww_crate(argc, argv);
+}
+#+END_SRC

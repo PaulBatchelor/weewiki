@@ -41,7 +41,42 @@ saves on disk space. Only use what is currently needed.
 * Generated Files
 =crate.c= I think is fine? Note that crate will use some
 functionality from zet.
+
+Create relies on constructs from weewiki and the zet, so
+those headers file should be tangled out before trying to
+compile this one (the weewiki build system tangles
+everything before compilation, so this should be
+a non-issue).
+
+#+NAME: crate.c
+#+BEGIN_SRC c :tangle crate.c
+#include <stdio.h>
+#include "weewiki.h"
+#include "zet.h"
+<<funcdefs>>
+<<funcs>>
+#+END_SRC
 * Operations
+These are the command line operations for the crate
+interface.
+** Top Level Callback
+=ww_crate= is expected to be called inside of the
+top-level weewiki program.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int ww_crate(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int ww_crate(int argc, char *argv[])
+{
+    /* TODO: implement */
+    fprintf(stderr, "Go away. Come back later.\n");
+    return -1;
+}
+#+END_SRC
 ** Import
 Usage: import a.db foo.sqlar
 
