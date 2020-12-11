@@ -78,8 +78,6 @@ int ww_crate(int argc, char *argv[])
 {
     const char *cmd;
 
-    fprintf(stderr, "Go away. Come back later.\n");
-
     if (argc <= 1) {
         fprintf(stderr, "Crate: supply a command\n");
         return -1;
@@ -96,6 +94,8 @@ int ww_crate(int argc, char *argv[])
         p_export(argc, argv);
     } else if (!strcmp(cmd, "extract")) {
         p_extract(argc, argv);
+    } else if (!strcmp(cmd, "find")) {
+        p_find(argc, argv);
     } else {
         fprintf(stderr, "Crate: could not find command '%s'\n", cmd);
     }
@@ -216,6 +216,78 @@ static int p_import(int argc, char *argv[])
     return 1;
 }
 #+END_SRC
+** Find
+Usage: find a.db file_pattern
+
+Performs a search in the zet for a file pattern.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_find(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_find(int argc, char *argv[])
+{
+    sqlite3_stmt *stmt;
+    const char *ww_name;
+    weewiki_d *ww;
+    sqlite3 *db;
+    int rc;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s a.db file_pattern\n",
+                argv[0]);
+        return 1;
+    }
+
+    ww_name = argv[1];
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, ww_name);
+
+    db = weewiki_db(ww);
+
+    if (argc == 2) {
+        /* list all files */
+        sqlite3_prepare_v2(db,
+                           "SELECT uuid, value FROM wikizet "
+                           "WHERE value LIKE \"/%\";",
+                           -1, &stmt, NULL);
+    } else {
+        sqlite3_prepare_v2(db,
+                           "SELECT uuid, value FROM wikizet "
+                           "WHERE value LIKE \"/%\" "
+                           "and value LIKE ?1;",
+                           -1, &stmt, NULL);
+
+        sqlite3_bind_text(stmt, 1, argv[2], -1, NULL);
+    }
+
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *uuid;
+        const char *fname;
+
+        uuid = (const char *)sqlite3_column_text(stmt, 0);
+        fname = (const char *)sqlite3_column_text(stmt, 1);
+        printf("%s\t%s\n", uuid, fname);
+
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return 1;
+}
+#+END_SRC
+
 ** Export
 Usage: export a.db file_pattern
 
