@@ -286,6 +286,44 @@ int wwzet_entry(weewiki_d *ww,
     return 0;
 }
 #+END_SRC
+** Create Zet Entry (With Symbol)
+The function =wwzet_entry_withsymbol= wraps around
+=wwzet_entry= to create a new timestamped entry and
+prepends it with a single-character symbol.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_entry_withsymbol(weewiki_d *ww,
+                           char c,
+                           const char *msg,
+                           int sz,
+                           wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_entry_withsymbol(weewiki_d *ww,
+                           char c,
+                           const char *msg,
+                           int sz,
+                           wwzet_uuid *uuid)
+{
+    char *val;
+    int rc;
+
+    val = malloc(sz + 2);
+    val[0] = c;
+
+    strncpy(&val[1], msg, sz);
+
+    val[sz + 1] = '\0';
+
+    rc = wwzet_entry(ww, val, sz, uuid);
+
+    free(val);
+    return rc;
+}
+#+END_SRC
 ** Insert an Entry
 The function =wwzet_insert= will perform a low-level
 insert command into the wikizet table. The timestamp,
@@ -435,6 +473,25 @@ Presumably, this would link to an entry in the SQLar table
 (which do not have leading slashes). Thus, an entry
 =/test/foo.txt= would have a corresponding SQLar file
 =test/foo.txt=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_file(weewiki_d *ww,
+               const char *filename,
+               int sz,
+               wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_file(weewiki_d *ww,
+               const char *filename,
+               int sz,
+               wwzet_uuid *uuid)
+{
+    return wwzet_entry_withsymbol(ww, '/', filename, sz, uuid);
+}
+#+END_SRC
 ** Create Zet Group
 A group entry is created with =wwzet_group=.
 
@@ -442,6 +499,25 @@ Groups are used with the crate interface, and are used
 to link files to specific sqlar archives.
 
 Groups are prefixed with '@'.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_group(weewiki_d *ww,
+               const char *group,
+               int sz,
+               wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_group(weewiki_d *ww,
+               const char *filename,
+               int sz,
+               wwzet_uuid *uuid)
+{
+    return wwzet_entry_withsymbol(ww, '@', filename, sz, uuid);
+}
+#+END_SRC
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
