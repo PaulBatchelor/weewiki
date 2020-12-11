@@ -318,7 +318,7 @@ int wwzet_entry_withsymbol(weewiki_d *ww,
 
     val[sz + 1] = '\0';
 
-    rc = wwzet_entry(ww, val, sz, uuid);
+    rc = wwzet_entry(ww, val, sz + 1, uuid);
 
     free(val);
     return rc;

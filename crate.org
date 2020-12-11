@@ -51,7 +51,9 @@ a non-issue).
 #+NAME: crate.c
 #+BEGIN_SRC c :tangle crate.c
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sqlite3.h>
 #include "weewiki.h"
 #include "zet.h"
 <<funcdefs>>
@@ -129,20 +131,88 @@ created, its UUID gets linked with the UUID of the group.
 
 #+NAME: funcs
 #+BEGIN_SRC c
+static int do_i_exist(const char *filename)
+{
+    FILE *fp;
+    int rc;
+
+    fp = fopen(filename, "r");
+
+    rc = 0;
+
+    if (fp == NULL) {
+        rc = 0;
+    } else {
+        rc = 1;
+        fclose(fp);
+    }
+
+    return rc;
+}
+
 static int p_import(int argc, char *argv[])
 {
-    const char *db_name;
+    const char *ww_name;
+    weewiki_d *ww;
+
     const char *sqlar_name;
+    sqlite3 *sqlar_db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    wwzet_uuid group_uuid;
+
     if (argc < 3) {
         fprintf(stderr, "Usage: %s a.db foo.sqlar\n", argv[0]);
         return 1;
     }
-    fprintf(stderr, "not implemented. %d\n", argc);
 
-    db_name = argv[1];
+    ww_name = argv[1];
     sqlar_name = argv[2];
 
-    fprintf(stderr, "importing %s into %s\n", db_name, sqlar_name);
+    if (!do_i_exist(sqlar_name)) {
+        fprintf(stderr, "Could not find %s\n", sqlar_name);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, ww_name);
+    sqlite3_open(sqlar_name, &sqlar_db);
+
+    wwzet_uuid_rng_init();
+
+    /* create group */
+    wwzet_uuid_init(&group_uuid);
+    wwzet_group(ww, sqlar_name, strlen(sqlar_name), &group_uuid);
+
+    sqlite3_prepare_v2(sqlar_db,
+                       "SELECT name FROM sqlar;",
+                       -1, &stmt, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *f;
+        int sz;
+        wwzet_uuid file_uuid;
+
+        f = (const char *)sqlite3_column_text(stmt, 0);
+        sz = sqlite3_column_bytes(stmt, 0);
+
+        wwzet_file(ww, f, sz, &file_uuid);
+        wwzet_link(ww, &file_uuid, &group_uuid);
+
+        rc = sqlite3_step(stmt);
+    }
+
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(sqlar_db);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
     return 1;
 }
 #+END_SRC
