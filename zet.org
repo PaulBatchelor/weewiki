@@ -237,6 +237,55 @@ and timestamps it based on the current system time.
 If =uuid= is not NULL, the generated UUID is saved here.
 It is assumed the uuid RNG is initialized already before
 calling this function.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_entry(weewiki_d *ww,
+                const char *msg,
+                int sz,
+                wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_entry(weewiki_d *ww,
+                const char *msg,
+                int sz,
+                wwzet_uuid *uuid)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    wwzet_uuid id;
+    int rc;
+
+    wwzet_uuid_init(&id);
+    db = weewiki_db(ww);
+    wwzet_uuid_generate(&id);
+
+    sqlite3_prepare_v2(db,
+                       "INSERT INTO "
+                       "wikizet(time, UUID, value)"
+                       "VALUES(datetime(), ?1, ?2);",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    sqlite3_bind_text(stmt, 1, id.str, -1, NULL);
+    sqlite3_bind_text(stmt, 2, msg, sz, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    if (uuid != NULL) *uuid = id;
+
+    sqlite3_finalize(stmt);
+    return 0;
+}
+#+END_SRC
 ** Insert an Entry
 The function =wwzet_insert= will perform a low-level
 insert command into the wikizet table. The timestamp,
