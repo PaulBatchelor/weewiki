@@ -304,7 +304,57 @@ static int p_export(int argc, char *argv[]);
 #+BEGIN_SRC c
 static int p_export(int argc, char *argv[])
 {
-    fprintf(stderr, "not implemented.\n");
+    sqlite3_stmt *stmt;
+    const char *ww_name;
+    weewiki_d *ww;
+    sqlite3 *db;
+    int rc;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s a.db file_pattern\n",
+                argv[0]);
+        return 1;
+    }
+
+    ww_name = argv[1];
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, ww_name);
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                        "SELECT uuid, value FROM wikizet "
+                        "WHERE value LIKE \"/%\" "
+                        "and value LIKE ?1;",
+                        -1, &stmt, NULL);
+
+    sqlite3_bind_text(stmt, 1, argv[2], -1, NULL);
+
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *uuid;
+        const char *fname;
+        FILE *fp;
+
+        uuid = (const char *)sqlite3_column_text(stmt, 0);
+        fname = (const char *)sqlite3_column_text(stmt, 1);
+
+        fp = fopen(uuid, "w");
+        printf("%s\t%s\n", uuid, fname);
+        fprintf(fp, "uuid\t%s\n", uuid);
+        fprintf(fp, "filename\t%s\n", fname);
+        fclose(fp);
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
     return 1;
 }
 #+END_SRC
