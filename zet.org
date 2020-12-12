@@ -545,6 +545,8 @@ int ww_zet(int argc, char *argv[])
         return p_export(argc, argv);
     } else if (!strcmp(argv[0], "import")) {
         return p_import(argc, argv);
+    } else if (!strcmp(argv[0], "rebuild")) {
+        return p_rebuild(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[1]);
     }
@@ -692,9 +694,6 @@ void import_line(weewiki_d *ww, const char *line, int sz)
 
 
     sz--; /* chomp line break */
-    /* fprintf(stdout, "line: "); */
-    /* fwrite(line, 1, sz, stdout); */
-
 
     for (i = 0; i < 3; i++) {
         val[i] = NULL;
@@ -732,28 +731,23 @@ void import_line(weewiki_d *ww, const char *line, int sz)
                  val[2], vlen[2]);
 }
 
-static int p_import(int argc, char *argv[])
+static int import_values(weewiki_d *ww)
 {
     FILE *fp;
+    sqlite3 *db;
+    int err;
     char *buf;
     int sz;
     char c;
-    weewiki_d *ww;
-    sqlite3 *db;
-
-    ww = malloc(weewiki_sizeof());
-    weewiki_init(ww);
-    weewiki_open(ww, weewiki_dbname_get());
-
-    db = weewiki_db(ww);
 
     fp = stdin;
 
-    sz = 0;
+    err = 0;
 
-    buf = calloc(1, 1024);
-
+    db = weewiki_db(ww);
     sqlite3_exec(db, "BEGIN;\n", NULL, NULL, NULL);
+    buf = calloc(1, 1024);
+    sz = 0;
 
     while (1) {
         c = fgetc(fp);
@@ -762,25 +756,71 @@ static int p_import(int argc, char *argv[])
         sz++;
 
         if (sz == 1023) {
-           fprintf(stderr, "import buffer size too small\n");
-           goto clean;
+            fprintf(stderr, "import buffer size too small\n");
+            err = 1;
+            goto clean;
         }
 
         if (c == '\n') {
-           import_line(ww, buf, sz);
-           sz = 0;
+            import_line(ww, buf, sz);
+            sz = 0;
         }
     }
 
     sqlite3_exec(db, "COMMIT;\n", NULL, NULL, NULL);
 
     clean:
-    free(buf);
+        free(buf);
+        return err;
+}
+
+static int p_import(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    rc = import_values(ww);
 
     weewiki_close(ww);
     weewiki_clean(ww);
     free(ww);
-    return 0;
+    return rc;
+}
+#+END_SRC
+** rebuild
+=rebuild= is similar to =import=, except that the operation
+replaces the existing contents in the zet.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_rebuild(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_rebuild(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    sqlite3_exec(weewiki_db(ww),
+                 "DELETE FROM wikizet WHERE 1;\n",
+                 NULL, NULL, NULL);
+
+    rc = import_values(ww);
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
 }
 #+END_SRC
 ** info
