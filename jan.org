@@ -272,11 +272,18 @@ const unsigned char * weewiki_janet_wwdir(JanetTable *env)
 #+END_SRC
 ** Open/Close database
 Should only be used in the janet standalone.
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static Janet cfun_ww_open(int32_t argc, Janet *argv);
 static Janet cfun_ww_close(int32_t argc, Janet *argv);
 #+END_SRC
+
+Note: this used to use =weewiki_open=, but has been changed
+to use =weewiki_create=. The latter function will open and
+initialize a new database (which is what the former used
+to do).
+
 #+NAME: functions
 #+BEGIN_SRC c
 static Janet cfun_ww_open(int32_t argc, Janet *argv)
@@ -288,7 +295,7 @@ static Janet cfun_ww_open(int32_t argc, Janet *argv)
     filename = janet_getstring(argv, 0);
     ww = weewiki_get();
 
-    weewiki_open(ww, (const char *)filename);
+    weewiki_create(ww, (const char *)filename);
     return janet_wrap_nil();
 }
 

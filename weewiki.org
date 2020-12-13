@@ -713,6 +713,7 @@ int weewiki_open(weewiki_d *ww, const char *filename)
 
     ww->db = NULL;
     rc = sqlite3_open(filename, &db);
+
     if (rc) {
         fprintf(stderr,
                 "Could not open database: %s",
