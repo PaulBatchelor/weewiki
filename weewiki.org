@@ -697,6 +697,19 @@ int weewiki_open(weewiki_d *ww, const char *filename)
 {
     sqlite3 *db;
     int rc;
+    FILE *fp;
+
+
+    fp = fopen(filename, "r");
+
+    if (fp == NULL) {
+        fprintf(stderr,
+            "Could not find database %s\n",
+            filename);
+        return 1;
+    }
+
+    fclose(fp);
 
     ww->db = NULL;
     rc = sqlite3_open(filename, &db);
@@ -705,12 +718,42 @@ int weewiki_open(weewiki_d *ww, const char *filename)
                 "Could not open database: %s",
                 sqlite3_errmsg(db));
         sqlite3_close(db);
-        return 0;
+        return 1;
+    }
+
+    ww->db = db;
+    return 0;
+}
+#+END_SRC
+** Create
+Creates and initializes a weewiki database.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int weewiki_create(weewiki_d *ww, const char *filename);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+int weewiki_create(weewiki_d *ww, const char *filename)
+{
+    sqlite3 *db;
+    int rc;
+
+    ww->db = NULL;
+    rc = sqlite3_open(filename, &db);
+
+    if (rc) {
+        fprintf(stderr,
+                "Could not open database: %s",
+                sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 1;
     }
 
     ww->db = db;
     weewiki_create_tables(ww);
-    return 1;
+    return 0;
 }
 #+END_SRC
 ** Close
@@ -1044,6 +1087,41 @@ created before running any other commands.
 
 =create= creates an a weewiki database in the currently
 directory. By default, this is called "a.db".
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"create", 6, p_create, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_create(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_create(int argc, char *argv[])
+{
+    weewiki_d ww;
+    int rc;
+    const char *dbname;
+
+    if (argc > 1) {
+        dbname = argv[1];
+    } else {
+        dbname = weewiki_dbname_get();
+    }
+
+    weewiki_init(&ww);
+
+    rc = weewiki_create(&ww, dbname);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return rc;
+}
+#+END_SRC
+
 * Push/Pull
 ** Push
 Pushes a file to database.
