@@ -129,6 +129,9 @@ Before inserting file entries, a new group entry is created
 with the name of the SQLar archive. When a new file entry is
 created, its UUID gets linked with the UUID of the group.
 
+Note: don't forget to use =BEGIN= and =COMMIT= on the
+weewiki database for faster inserts.
+
 #+NAME: funcs
 #+BEGIN_SRC c
 static int do_i_exist(const char *filename)
@@ -154,6 +157,7 @@ static int p_import(int argc, char *argv[])
 {
     const char *ww_name;
     weewiki_d *ww;
+    sqlite3 *ww_db;
 
     const char *sqlar_name;
     sqlite3 *sqlar_db;
@@ -192,6 +196,10 @@ static int p_import(int argc, char *argv[])
 
     rc = sqlite3_step(stmt);
 
+    ww_db = weewiki_db(ww);
+
+    sqlite3_exec(ww_db, "BEGIN;\n", NULL, NULL, NULL);
+
     while (rc == SQLITE_ROW) {
         const char *f;
         int sz;
@@ -206,6 +214,7 @@ static int p_import(int argc, char *argv[])
         rc = sqlite3_step(stmt);
     }
 
+    sqlite3_exec(ww_db, "COMMIT;\n", NULL, NULL, NULL);
 
     sqlite3_finalize(stmt);
     sqlite3_close(sqlar_db);
