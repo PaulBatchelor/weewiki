@@ -287,6 +287,46 @@ int wwzet_uuid_fromval(weewiki_d *ww,
     return err;
 }
 #+END_SRC
+*** Resolve a UUID
+=wwzet_uuid_resolve= smartly resolves a UUID from
+a string value. Will return a non-zero value on error.
+
+If it starts with a =@=, it will know to resolve it
+from a group. Otherwise, it assumes it is a partial
+UUID match.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_uuid_resolve(weewiki_d *ww,
+                       const char *val,
+                       int sz,
+                       wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_uuid_resolve(weewiki_d *ww,
+                       const char *val,
+                       int sz,
+                       wwzet_uuid *uuid)
+{
+    int err;
+    int rc;
+    err = 0;
+
+    wwzet_uuid_init(uuid);
+
+    if (val[0] == '@') {
+        rc = wwzet_uuid_fromval(ww, val, sz, uuid);
+        if (rc) err = 1;
+    } else {
+        rc = wwzet_uuid_expand(ww, val, sz, uuid);
+        if (rc != 1) err = 1;
+    }
+
+    return err;
+}
+#+END_SRC
 ** Create Zet Entry
 =wwzet_entry= creates a generic zet entry given a message
 and timestamps it based on the current system time.
@@ -606,6 +646,8 @@ int ww_zet(int argc, char *argv[])
         return p_rebuild(argc, argv);
     } else if (!strcmp(argv[0], "groups")) {
         return p_groups(argc, argv);
+    } else if (!strcmp(argv[0], "link")) {
+        return p_link(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1063,13 +1105,67 @@ static int p_rebuild(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-** info
-Gets information on a particular zet item. A partial
-UUID value can be provided.
 ** link
 Link. Link item A to item B. A new zet pair will be made
 with the A UUID value and the B reference. A and B can be
 partial UUID values.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_link(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_link(int argc, char *argv[])
+{
+    int err;
+    weewiki_d *ww;
+    wwzet_uuid a, b;
+    int rc;
+
+    err = 0;
+
+    if (argc <= 2) {
+        fprintf(stderr, "Usage: %s UUIDA UUIDB\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    rc = wwzet_uuid_resolve(ww, argv[1], strlen(argv[1]), &a);
+
+    if (rc) {
+        fprintf(stderr,
+                "Could not resolve '%s'\n", argv[1]);
+        err = 1;
+        goto clean;
+    }
+
+    rc = wwzet_uuid_resolve(ww, argv[2], strlen(argv[2]), &b);
+
+    if (rc) {
+        fprintf(stderr,
+                "Could not resolve '%s'\n", argv[1]);
+        err = 1;
+        goto clean;
+    }
+
+    wwzet_link(ww, &a, &b);
+
+    clean:
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
+    return err;
+}
+#+END_SRC
+** info
+Gets information on a particular zet item. A partial
+UUID value can be provided.
 ** search
 Performs full-text search on the zet table.
 ** lookup
