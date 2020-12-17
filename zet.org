@@ -548,7 +548,7 @@ int ww_zet(int argc, char *argv[])
     } else if (!strcmp(argv[0], "rebuild")) {
         return p_rebuild(argc, argv);
     } else {
-        fprintf(stderr, "Could not find command '%s'\n", argv[1]);
+        fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
 
     return 1;
