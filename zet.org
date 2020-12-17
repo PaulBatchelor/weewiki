@@ -648,6 +648,8 @@ int ww_zet(int argc, char *argv[])
         return p_groups(argc, argv);
     } else if (!strcmp(argv[0], "link")) {
         return p_link(argc, argv);
+    } else if (!strcmp(argv[0], "search")) {
+        return p_search(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1163,11 +1165,65 @@ static int p_link(int argc, char *argv[])
     return err;
 }
 #+END_SRC
+** search
+Performs full-text search on the zet table.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_search(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_search(int argc, char *argv[])
+{
+    int err;
+    weewiki_d *ww;
+    int rc;
+    sqlite3_stmt *stmt;
+
+    err = 0;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s keyword\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    sqlite3_prepare_v2(weewiki_db(ww),
+                       "SELECT time, UUID, value FROM wikizet "
+                       "WHERE value MATCH ?1;", -1,
+                       &stmt, NULL);
+
+    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *t, *i, *v;
+
+        t = (const char *) sqlite3_column_text(stmt, 0);
+        i = (const char *) sqlite3_column_text(stmt, 1);
+        v = (const char *) sqlite3_column_text(stmt, 2);
+
+        printf("%s\t%s\t%s\n", t, i, v);
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
+    return err;
+}
+#+END_SRC
 ** info
 Gets information on a particular zet item. A partial
 UUID value can be provided.
-** search
-Performs full-text search on the zet table.
 ** lookup
 given a partial UUID, try to find the full matching
 UUID. If more than one is found. return an error.
