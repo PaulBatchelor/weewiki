@@ -831,7 +831,6 @@ static int export_group(const char *group)
     int err;
 
     err = 0;
-    fprintf(stderr, "exporting %s\n", group);
 
     ww = malloc(weewiki_sizeof());
     weewiki_init(ww);
