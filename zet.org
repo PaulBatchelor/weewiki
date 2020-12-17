@@ -650,6 +650,8 @@ int ww_zet(int argc, char *argv[])
         return p_link(argc, argv);
     } else if (!strcmp(argv[0], "search")) {
         return p_search(argc, argv);
+    } else if (!strcmp(argv[0], "mkgroup")) {
+        return p_mkgroup(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1219,6 +1221,45 @@ static int p_search(int argc, char *argv[])
     free(ww);
 
     return err;
+}
+#+END_SRC
+** mkgroup
+makes a new group.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_mkgroup(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_mkgroup(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    wwzet_uuid uuid;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s group\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    wwzet_uuid_rng_init();
+    wwzet_uuid_init(&uuid);
+
+    wwzet_entry_withsymbol(ww,
+                           '@',
+                           argv[1],
+                           strlen(argv[1]),
+                           &uuid);
+    printf("%s\n", uuid.str);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return 0;
 }
 #+END_SRC
 ** info
