@@ -305,7 +305,7 @@ Usage: export a.db file_pattern
 Exports metadata based on a SQLite file pattern. This
 will save information as tab-separated key value pairs.
 The filenames used will be their UUID.
-
+*** Top Level Function
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_export(int argc, char *argv[]);
@@ -369,6 +369,26 @@ static int p_export(int argc, char *argv[])
     return 1;
 }
 #+END_SRC
+*** Group Export (Not yet implemented)
+For larger zettelkastens (such as managing a sample
+library via the crate interface), it makes more sense to
+export things by group rather than all at once. A group can
+be exported by supplying it as an optional argument on the
+commandline. Any zet items linked to that group will be
+exported, including the group entry itself.
+
+To begin group export, the UUID of the groupname must be
+found via SQL query. This entry will be the first thing
+to be exported.
+
+From there, another query happens where every reference to
+that UUID is found. This requires converting the UUID to an
+address, done by prepending a =#= to it.
+
+For every row that shows up, query item that has that UUID,
+and export. Included in this should be the link to the
+group, so this link is implicitly exported along with
+everything else.
 ** Extract
 Extracts a file using the metadata file.
 
