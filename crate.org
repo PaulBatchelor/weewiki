@@ -96,6 +96,8 @@ int ww_crate(int argc, char *argv[])
         p_extract(argc, argv);
     } else if (!strcmp(cmd, "find")) {
         p_find(argc, argv);
+    } else if (!strcmp(cmd, "copy")) {
+        p_copy(argc, argv);
     } else {
         fprintf(stderr, "Crate: could not find command '%s'\n", cmd);
     }
@@ -388,3 +390,82 @@ Usage: copy a.db foo.sqlar
 
 Copy a SQLar archive =foo.sqlar= to a weewiki database
 =a.db=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_copy(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_copy(int argc, char *argv[])
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    int rc;
+    int err;
+
+    err = 0;
+
+    rc = sqlite3_open(":memory:", &db);
+
+    if (rc) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s src dst\n", argv[0]);
+        return 1;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+                            "ATTACH ?1 AS src;",
+                            -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, argv[1], -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        err = 1;
+        goto cleanup;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+                            "ATTACH ?1 AS dst;",
+                            -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, argv[2], -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        err = 1;
+        goto cleanup;
+    }
+
+    sqlite3_exec(db,
+        "CREATE TABLE IF NOT EXISTS dst.sqlar("
+        "  name TEXT PRIMARY KEY,"
+        "  mode INT,"
+        "  mtime INT,"
+        "  sz INT,"
+        "  data BLOB"
+        ");", NULL, NULL, NULL);
+
+    sqlite3_exec(db, "BEGIN;", NULL, NULL, NULL);
+    sqlite3_exec(db,
+                "INSERT OR REPLACE INTO dst.sqlar SELECT * FROM src.sqlar;", NULL, NULL, NULL);
+    sqlite3_exec(db, "COMMIT;", NULL, NULL, NULL);
+
+    sqlite3_exec(db, "DETACH src;", NULL, NULL, NULL);
+    sqlite3_exec(db, "DETACH dst;", NULL, NULL, NULL);
+
+    cleanup:
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return err;
+}
+#+END_SRC
