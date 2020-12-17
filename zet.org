@@ -547,6 +547,8 @@ int ww_zet(int argc, char *argv[])
         return p_import(argc, argv);
     } else if (!strcmp(argv[0], "rebuild")) {
         return p_rebuild(argc, argv);
+    } else if (!strcmp(argv[0], "groups")) {
+        return p_groups(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -835,3 +837,50 @@ Performs full-text search on the zet table.
 ** lookup
 given a partial UUID, try to find the full matching
 UUID. If more than one is found. return an error.
+** groups
+prints list of groups and their UUIDs.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_groups(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_groups(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT uuid, value from wikizet "
+                       "where value like '@%'",
+                       -1, &stmt, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *uuid;
+        const char *value;
+
+        uuid = (const char *)sqlite3_column_text(stmt, 0);
+        value = (const char *)sqlite3_column_text(stmt, 1);
+        printf("%s\t%s\n", uuid, value + 1);
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
+}
+#+END_SRC
