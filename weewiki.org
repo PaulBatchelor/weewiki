@@ -667,6 +667,14 @@ int weewiki_sync(weewiki_d *ww)
 #+BEGIN_SRC c
 void weewiki_clear(weewiki_d *ww);
 #+END_SRC
+
+When working with a massive zet, I began noticing that my
+SQLite database was getting larger and larger, even after
+I removed all tables. This is because tables are marked
+for removal, but aren't necessarily removed.
+
+The solution to this is: =VACUUM=.
+
 #+NAME: functions
 #+BEGIN_SRC c
 void weewiki_clear(weewiki_d *ww)
@@ -683,6 +691,11 @@ void weewiki_clear(weewiki_d *ww)
                 NULL);
     sqlite3_exec(ww->db,
                 "DELETE FROM wikizet WHERE 1;\n",
+                NULL,
+                NULL,
+                NULL);
+    sqlite3_exec(ww->db,
+                "VACUUM;\n",
                 NULL,
                 NULL,
                 NULL);
@@ -2226,6 +2239,7 @@ a database across multiple computers.
 #+BEGIN_SRC c
 static int p_dump(int argc, char *argv[]);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int p_dump(int argc, char *argv[])
@@ -2580,5 +2594,34 @@ int ww_crate(int argc, char *argv[]);
 static int p_crate(int argc, char *argv[])
 {
     return ww_crate(argc, argv);
+}
+#+END_SRC
+* Vacuum
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"vacuum", 6, p_vacuum, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_vacuum(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_vacuum(int argc, char *argv[])
+{
+    weewiki_d ww;
+    sqlite3 *db;
+
+    weewiki_init(&ww);
+    weewiki_open(&ww, weewiki_dbname_get());
+
+    db = weewiki_db(&ww);
+    sqlite3_exec(db, "VACUUM;\n", NULL, NULL, NULL);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return 0;
 }
 #+END_SRC

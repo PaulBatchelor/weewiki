@@ -751,6 +751,10 @@ From there, another query happens where every reference to
 that UUID is found. This requires converting the UUID to an
 address, done by prepending a =#= to it.
 
+Update: this query-within-a-query ended up being massively
+slow, so I figured out how to do the same thing in a
+subquery.
+
 #+NAME: find_references
 #+BEGIN_SRC c
 {
@@ -767,16 +771,26 @@ address, done by prepending a =#= to it.
         ref[i + 1] = groupid.str[i];
     }
 
-    sqlite3_prepare_v2(db, "SELECT uuid "
+    sqlite3_prepare_v2(db,
+                       "SELECT time, UUID, value FROM wikizet "
+                       "WHERE UUID IN ("
+                       "SELECT UUID "
                        "FROM wikizet "
-                       "WHERE value LIKE ?1;", -1,
+                       "WHERE value LIKE ?1);", -1,
                        &stmt, NULL);
 
     sqlite3_bind_text(stmt, 1, ref, -1, NULL);
     rc = sqlite3_step(stmt);
 
     while (rc == SQLITE_ROW) {
-        <<lookup_uuid_and_export>>
+        const char *t, *v, *id;
+        t = (const char *)sqlite3_column_text(stmt, 0);
+        id = (const char *)sqlite3_column_text(stmt, 1);
+        v = (const char *)sqlite3_column_text(stmt, 2);
+        printf("%s\t%s\t%s\n",
+               (t == NULL) ? "-" : t,
+               id,
+               v);
         rc = sqlite3_step(stmt);
     }
 
@@ -789,37 +803,6 @@ For every row that shows up, query item that has that UUID,
 and export. Included in this should be the link to the
 group, so this link is implicitly exported along with
 everything else.
-
-#+NAME: lookup_uuid_and_export
-#+BEGIN_SRC c
-{
-    const char *uuid;
-    sqlite3_stmt *lookup;
-    int rc;
-    uuid = (const char *)sqlite3_column_text(stmt, 0);
-    rc = sqlite3_prepare_v2(db,
-                       "SELECT time, value FROM wikizet "
-                       "WHERE UUID LIKE ?1;", -1,
-                       &lookup, NULL);
-
-    sqlite3_bind_text(lookup, 1, uuid, -1, NULL);
-
-    rc = sqlite3_step(lookup);
-
-    while (rc == SQLITE_ROW) {
-        const char *t, *v;
-        t = (const char *)sqlite3_column_text(lookup, 0);
-        v = (const char *)sqlite3_column_text(lookup, 1);
-        printf("%s\t%s\t%s\n",
-               (t == NULL) ? "-" : t,
-               uuid,
-               v);
-        rc = sqlite3_step(lookup);
-    }
-
-    sqlite3_finalize(lookup);
-}
-#+END_SRC
 
 #+NAME: export_group
 #+BEGIN_SRC c
