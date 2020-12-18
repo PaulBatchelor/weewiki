@@ -750,7 +750,7 @@ Export. This will dump all the zet pairs as list of
 tab-separated values to stdout. The idea would then be that
 this information could then be processed further by
 some external program.
-** Top level Function
+*** Top level Function
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_export(int argc, char *argv[]);
@@ -766,6 +766,9 @@ static int p_export(int argc, char *argv[])
     return export_group(argv[1]);
 }
 #+END_SRC
+*** Export All
+When no extra arguments are given, all of the zet is
+exported.
 
 #+NAME: export_all
 #+BEGIN_SRC c
@@ -806,7 +809,7 @@ static int export_all(void)
     return 0;
 }
 #+END_SRC
-*** Group Export (Not yet implemented)
+*** Group Export
 For larger zettelkastens (such as managing a sample
 library via the crate interface), it makes more sense to
 export things by group rather than all at once. A group can
