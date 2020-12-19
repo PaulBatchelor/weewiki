@@ -1045,10 +1045,15 @@ int weewiki_pull(weewiki_d *ww,
 }
 #+END_SRC
 ** Exists
+The function =weewiki_exists= is used to check if
+a page (=key=) exists in the weewiki database. Returns
+TRUE (1) or FALSE (0).
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int weewiki_exists(weewiki_d *ww, const char *key);
 #+END_SRC
+
 #+NAME: functions
 #+BEGIN_SRC c
 int weewiki_exists(weewiki_d *ww, const char *key)

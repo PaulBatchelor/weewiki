@@ -291,9 +291,14 @@ int wwzet_uuid_fromval(weewiki_d *ww,
 =wwzet_uuid_resolve= smartly resolves a UUID from
 a string value. Will return a non-zero value on error.
 
-If it starts with a =@=, it will know to resolve it
-from a group. Otherwise, it assumes it is a partial
-UUID match.
+The default behavior of resolve is to expand a partial UUID.
+However, certain prefixes in the string will cause it to be
+treated as a value lookup.
+
+Currently, valid prefixes are =@= (groups), =!= (pages),
+and =/= (=crate= filepaths). Message (=>=) and
+addresses (=#=) are to be ignored because they have less
+of a chance of being unique.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -312,11 +317,17 @@ int wwzet_uuid_resolve(weewiki_d *ww,
 {
     int err;
     int rc;
+    int special_prefix;
     err = 0;
 
     wwzet_uuid_init(uuid);
 
-    if (val[0] == '@') {
+    special_prefix =
+        val[0] == '@' ||
+        val[0] == '!' ||
+        val[0] == '/';
+
+    if (special_prefix) {
         rc = wwzet_uuid_fromval(ww, val, sz, uuid);
         if (rc) err = 1;
     } else {
@@ -652,6 +663,10 @@ int ww_zet(int argc, char *argv[])
         return p_search(argc, argv);
     } else if (!strcmp(argv[0], "mkgroup")) {
         return p_mkgroup(argc, argv);
+    } else if (!strcmp(argv[0], "pages")) {
+        return p_pages(argc, argv);
+    } else if (!strcmp(argv[0], "mkpage")) {
+        return p_mkpage(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -701,36 +716,14 @@ static int p_say(int argc, char *argv[])
                 part = argv[p];
 
                 wwzet_uuid_init(&res);
-
-                if (part[0] == '@') {
-                    int rc;
-                    rc = wwzet_uuid_fromval(ww,
-                                            part,
-                                            strlen(part),
-                                            &res);
-
-                    if (rc) {
-                        fprintf(stderr,
-                                "could find group '%s'\n",
-                                part);
-                    } else {
-                        wwzet_link(ww, &uuid, &res);
-                    }
-
+                rc = wwzet_uuid_resolve(ww,
+                                        part,
+                                        strlen(part),
+                                        &res);
+                if (rc) {
+                    fprintf(stderr, "Could not resolve '%s'\n", part);
                 } else {
-                    int m;
-                    m = wwzet_uuid_expand(ww,
-                                          part,
-                                          strlen(part),
-                                          &res);
-
-                    if (m == 0) {
-                        fprintf(stderr, "could not expand '%s'\n", part);
-                    } else if (m > 1) {
-                        fprintf(stderr, "'%s' is not unique\n", part);
-                    } else {
-                        wwzet_link(ww, &uuid, &res);
-                    }
+                    wwzet_link(ww, &uuid, &res);
                 }
             }
         }
@@ -1263,6 +1256,115 @@ static int p_mkgroup(int argc, char *argv[])
     weewiki_clean(ww);
     free(ww);
     return 0;
+}
+#+END_SRC
+** mkpage
+Creates an entry linking to an existing weewiki page.
+
+This will check if the page exists first before creating.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_mkpage(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_mkpage(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    wwzet_uuid uuid;
+    int rc;
+    const char *page;
+    int err;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s page\n", argv[0]);
+        return 1;
+    }
+
+    err = 0;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    page = argv[1];
+
+    rc = weewiki_exists(ww, page);
+
+    if (!rc) {
+        fprintf(stderr, "Could not find page '%s'\n", page);
+        err = 1;
+        goto cleanup;
+    }
+
+    wwzet_uuid_rng_init();
+    wwzet_uuid_init(&uuid);
+
+    wwzet_entry_withsymbol(ww,
+                           '!',
+                           page,
+                           strlen(page),
+                           &uuid);
+
+    printf("%s\n", uuid.str);
+
+    cleanup:
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return err;
+}
+#+END_SRC
+** pages
+prints list of pages and their UUIDs.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_pages(int argc, char *argv[]);
+#+END_SRC
+
+=TODO=: maybe refactor this functionality because it's
+virtually identical to =p_groups= minus one character?
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_pages(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT uuid, value from wikizet "
+                       "where value like '!%'",
+                       -1, &stmt, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *uuid;
+        const char *value;
+
+        uuid = (const char *)sqlite3_column_text(stmt, 0);
+        value = (const char *)sqlite3_column_text(stmt, 1);
+        printf("%s\t%s\n", uuid, value + 1);
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
 }
 #+END_SRC
 ** info
