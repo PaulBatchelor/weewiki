@@ -667,6 +667,8 @@ int ww_zet(int argc, char *argv[])
         return p_pages(argc, argv);
     } else if (!strcmp(argv[0], "mkpage")) {
         return p_mkpage(argc, argv);
+    } else if (!strcmp(argv[0], "resolve")) {
+        return p_resolve(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1367,6 +1369,59 @@ static int p_pages(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
+** resolve
+=resolve= will resolve input argument(s) and print the
+UUID(s).
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_resolve(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_resolve(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int err;
+    int i;
+    wwzet_uuid id;
+
+    err = 0;
+
+    if (argc == 1) {
+        fprintf(stderr,
+            "Usage: %s str1 str2 ... strN\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    for (i = 1; i < argc; i++) {
+        err = wwzet_uuid_resolve(ww,
+                                 argv[i],
+                                 strlen(argv[i]),
+                                 &id);
+        if (err) {
+            fprintf(stderr,
+                    "Could not resolve '%s'\n",
+                    argv[i]);
+        }
+
+        printf("%s\n", id.str);
+    }
+
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
+    return err;
+}
+#+END_SRC
+
 ** info
 Gets information on a particular zet item. A partial
 UUID value can be provided.
