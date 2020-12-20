@@ -669,6 +669,8 @@ int ww_zet(int argc, char *argv[])
         return p_mkpage(argc, argv);
     } else if (!strcmp(argv[0], "resolve")) {
         return p_resolve(argc, argv);
+    } else if (!strcmp(argv[0], "shuffle")) {
+        return p_shuffle(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1414,6 +1416,77 @@ static int p_resolve(int argc, char *argv[])
     }
 
 
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
+    return err;
+}
+#+END_SRC
+** shuffle
+Prints N random zet entries given a pattern. Intended to
+be used to find random crate files for sample curation
+excersizes.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_shuffle(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_shuffle(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int err;
+    int N;
+    const char *pat;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    err = 0;
+
+    if (argc < 3) {
+        fprintf(stderr,
+            "Usage: %s N pattern\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    N = atoi(argv[1]);
+    pat = argv[2];
+
+    db = weewiki_db(ww);
+    sqlite3_prepare_v2(db,
+                       "SELECT time, UUID, value "
+                       "FROM wikizet "
+                       "WHERE value like ?1 "
+                       "ORDER BY RANDOM() "
+                       "LIMIT ?2;", -1,
+                       &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, pat, -1, NULL);
+    sqlite3_bind_int(stmt, 2, N);
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *t;
+        const char *u;
+        const char *v;
+
+        t = (const char *)sqlite3_column_text(stmt, 0);
+        u = (const char *)sqlite3_column_text(stmt, 1);
+        v = (const char *)sqlite3_column_text(stmt, 2);
+
+        printf("%s\t%s\t%s\n", (t == NULL ? "-" : t), u, v);
+
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
     weewiki_close(ww);
     weewiki_clean(ww);
     free(ww);
