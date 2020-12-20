@@ -1410,6 +1410,7 @@ static int p_resolve(int argc, char *argv[])
             fprintf(stderr,
                     "Could not resolve '%s'\n",
                     argv[i]);
+            break;
         }
 
         printf("%s\n", id.str);
