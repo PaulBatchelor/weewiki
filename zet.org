@@ -1505,6 +1505,10 @@ UUID. If more than one is found. return an error.
 ** groups
 prints list of groups and their UUIDs.
 
+If an additional argument is provided, it will try to
+resolve that to a UUID then list all the groups it
+belongs to.
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_groups(int argc, char *argv[]);
@@ -1517,32 +1521,74 @@ static int p_groups(int argc, char *argv[])
     weewiki_d *ww;
     int rc;
     sqlite3 *db;
-    sqlite3_stmt *stmt;
 
     ww = malloc(weewiki_sizeof());
     weewiki_init(ww);
     weewiki_open(ww, weewiki_dbname_get());
 
     db = weewiki_db(ww);
+    rc = 0;
 
-    sqlite3_prepare_v2(db,
-                       "SELECT uuid, value from wikizet "
-                       "where value like '@%'",
-                       -1, &stmt, NULL);
+    if (argc <= 1) {
+        sqlite3_stmt *stmt;
 
-    rc = sqlite3_step(stmt);
+        sqlite3_prepare_v2(db,
+                        "SELECT uuid, value from wikizet "
+                        "where value like '@%'",
+                        -1, &stmt, NULL);
 
-    while (rc == SQLITE_ROW) {
-        const char *uuid;
-        const char *value;
-
-        uuid = (const char *)sqlite3_column_text(stmt, 0);
-        value = (const char *)sqlite3_column_text(stmt, 1);
-        printf("%s\t%s\n", uuid, value + 1);
         rc = sqlite3_step(stmt);
+
+        while (rc == SQLITE_ROW) {
+            const char *uuid;
+            const char *value;
+
+            uuid = (const char *)sqlite3_column_text(stmt, 0);
+            value = (const char *)sqlite3_column_text(stmt, 1);
+            printf("%s\t%s\n", uuid, value + 1);
+            rc = sqlite3_step(stmt);
+        }
+        sqlite3_finalize(stmt);
+    } else {
+        wwzet_uuid id;
+        sqlite3_stmt *stmt;
+
+        rc = wwzet_uuid_resolve(ww,
+                                argv[1],
+                                strlen(argv[1]),
+                                &id);
+
+        if (rc) {
+            fprintf(stderr,
+                    "Could not resolve '%s'\n",
+                    argv[1]);
+            goto clean;
+        }
+
+        sqlite3_prepare_v2(db,
+                           "SELECT UUID, value FROM wikizet "
+                           "WHERE UUID in "
+                           "(SELECT UUID FROM wikizet where "
+                           "value LIKE \"#\" || ?1) "
+                           "and value LIKE \"@%\";", -1,
+                           &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, id.str, -1, NULL);
+
+        rc = sqlite3_step(stmt);
+
+        while (rc == SQLITE_ROW) {
+            const char *u, *v;
+
+            u = (const char *)sqlite3_column_text(stmt, 0);
+            v = (const char *)sqlite3_column_text(stmt, 1);
+
+            printf("%s\t%s\n", u, v);
+
+            rc = sqlite3_step(stmt);
+        }
     }
 
-    sqlite3_finalize(stmt);
+    clean:
     weewiki_close(ww);
     weewiki_clean(ww);
     free(ww);
