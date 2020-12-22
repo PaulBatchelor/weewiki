@@ -1566,11 +1566,15 @@ static int p_groups(int argc, char *argv[])
         }
 
         sqlite3_prepare_v2(db,
-                           "SELECT UUID, value FROM wikizet "
+                           "SELECT UUID, LTRIM(value, '@') FROM wikizet "
                            "WHERE UUID in "
-                           "(SELECT UUID FROM wikizet where "
-                           "value LIKE \"#\" || ?1) "
-                           "and value LIKE \"@%\";", -1,
+                           "(SELECT LTRIM(value, \"#\") "
+                           "FROM wikizet WHERE UUID in "
+                           "(SELECT UUID FROM wikizet WHERE "
+                           "UUID like ?1) AND "
+                           "VALUE like \"#%\") "
+                           "AND value like \"@%\";",
+                           -1,
                            &stmt, NULL);
         sqlite3_bind_text(stmt, 1, id.str, -1, NULL);
 
