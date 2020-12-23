@@ -1152,7 +1152,7 @@ static int p_link(int argc, char *argv[])
 
     if (rc) {
         fprintf(stderr,
-                "Could not resolve '%s'\n", argv[1]);
+                "Could not resolve '%s'\n", argv[2]);
         err = 1;
         goto clean;
     }
