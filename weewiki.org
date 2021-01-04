@@ -1731,7 +1731,7 @@ void weewiki_orgparse_setup(orgparse *op)
 }
 #+END_SRC
 *** Header
-Since =<h1>= is only reserved for titles, make all
+Since =h1= is only reserved for titles, make all
 the header sizes one level smaller.
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
