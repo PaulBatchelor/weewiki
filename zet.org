@@ -1429,6 +1429,15 @@ Prints N random zet entries given a pattern. Intended to
 be used to find random crate files for sample curation
 excersizes.
 
+An optional argument provided is (presumably) a group to
+ignore. It works by resolving the pattern and getting the
+UUID, and ignore all items that link to that UUID.
+
+This is intended to be used for sample curation
+and exploration. Samples already auditioned and would be
+added to a "listened to" group, which allow randomly chosen
+samples to be fresh.
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static int p_shuffle(int argc, char *argv[]);
@@ -1450,7 +1459,7 @@ static int p_shuffle(int argc, char *argv[])
 
     if (argc < 3) {
         fprintf(stderr,
-            "Usage: %s N pattern\n", argv[0]);
+            "Usage: %s N pattern [ignore]\n", argv[0]);
         return 1;
     }
 
@@ -1462,15 +1471,44 @@ static int p_shuffle(int argc, char *argv[])
     pat = argv[2];
 
     db = weewiki_db(ww);
-    sqlite3_prepare_v2(db,
-                       "SELECT time, UUID, value "
-                       "FROM wikizet "
-                       "WHERE value like ?1 "
-                       "ORDER BY RANDOM() "
-                       "LIMIT ?2;", -1,
-                       &stmt, NULL);
-    sqlite3_bind_text(stmt, 1, pat, -1, NULL);
-    sqlite3_bind_int(stmt, 2, N);
+
+    if (argc == 3) {
+        sqlite3_prepare_v2(db,
+                        "SELECT time, UUID, value "
+                        "FROM wikizet "
+                        "WHERE value like ?1 "
+                        "ORDER BY RANDOM() "
+                        "LIMIT ?2;", -1,
+                        &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, pat, -1, NULL);
+        sqlite3_bind_int(stmt, 2, N);
+    } else { /* use ignore pattern */
+        wwzet_uuid uuid;
+
+        rc = wwzet_uuid_resolve(ww,
+                                argv[3], strlen(argv[3]),
+                                &uuid);
+
+        if (rc) {
+            fprintf(stderr, "Could not resolve '%s'\n", argv[3]);
+            err = 1;
+            goto cleanup;
+        }
+
+        sqlite3_prepare_v2(db,
+                        "SELECT time, UUID, value "
+                        "FROM wikizet "
+                        "WHERE UUID in (SELECT UUID from wikizet "
+                        "WHERE value NOT LIKE '#' || ?3) "
+                        "AND value LIKE ?1 "
+                        "ORDER BY RANDOM() "
+                        "LIMIT ?2;", -1,
+                        &stmt, NULL);
+        sqlite3_bind_text(stmt, 1, pat, -1, NULL);
+        sqlite3_bind_int(stmt, 2, N);
+        sqlite3_bind_text(stmt, 3, uuid.str, -1, NULL);
+    }
+
     rc = sqlite3_step(stmt);
 
     while (rc == SQLITE_ROW) {
@@ -1487,6 +1525,7 @@ static int p_shuffle(int argc, char *argv[])
         rc = sqlite3_step(stmt);
     }
 
+    cleanup:
     sqlite3_finalize(stmt);
     weewiki_close(ww);
     weewiki_clean(ww);
@@ -1495,7 +1534,6 @@ static int p_shuffle(int argc, char *argv[])
     return err;
 }
 #+END_SRC
-
 ** info
 Gets information on a particular zet item. A partial
 UUID value can be provided.
