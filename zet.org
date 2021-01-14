@@ -626,6 +626,59 @@ int wwzet_group(weewiki_d *ww,
     return wwzet_entry_withsymbol(ww, '@', filename, sz, uuid);
 }
 #+END_SRC
+* Variables
+** Variables Overview
+A variable type in zet is a thing that can be chaned over
+time. The format is "$key:value". The message starts with
+"$" to inidicate the type flag. The variable name "key" is
+inbetween the "$" and the ":". The remaining part of the
+message is the value, which can be treated like another zet
+value.
+** Create a New Variable
+A variable must be explicitely created before it can be
+used. This is done to minimize typo-related errors. (At the
+time of writing, zet doesn't isn't great at removing or
+editing commands). =wwzet_var_new= will create a new
+variable =var= and tie it to a item with UUID =id=. The
+value will be set to be zero.
+** Setting a Variable to be a Message
+A variable can be set to be a message with
+=wwzet_var_message=.
+** Setting a Variable to be a Link
+A variable can be set to link to another UUID with
+=wwzet_var_link=.
+** TODO Command Line Interface
+Here are some command line operations, all under the
+subcommand "var"
+*** Top Level
+All variable subcommands get here.
+*** New
+usage: new uuid name
+
+creates a new variable called =name=. with a uuid =uuid=.
+*** Set
+usage: set uuid name value
+
+Sets the variable =name= to be =value=. Note that this
+implicitely sets the value type to be a mesage.
+*** Get
+usage: get uuid name
+
+gets the variable =name= associated with =uuid=.
+*** Link
+usage: link uuid name value
+
+sets a variable to link with an existing item. =value= can
+be a UUID, group, page, or anything else that the zet can
+resolve.
+*** List
+usage: list name item
+
+List UUIDs with the variable =name= and item name =item=.
+For example, running =list state @TODO= would list all
+UUIDs with the variable state pointing to the TODO group.
+
+These will be ordered by timestamp in ascending order.
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
@@ -1637,3 +1690,6 @@ static int p_groups(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
+** TODO var
+Does things with zet variables. Calls the
+variable CLI subprogram.
