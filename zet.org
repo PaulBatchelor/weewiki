@@ -640,7 +640,7 @@ used. This is done to minimize typo-related errors. (At the
 time of writing, zet doesn't isn't great at removing or
 editing commands). =wwzet_var_new= will create a new
 variable =var= and tie it to a item with UUID =id=. The
-value will be set to be zero.
+value will be set to be empty.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -648,6 +648,46 @@ int wwzet_var_new(weewiki_d *ww,
                   wwzet_uuid *id,
                   const char *var,
                   int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_var_new(weewiki_d *ww,
+                  wwzet_uuid *id,
+                  const char *var,
+                  int sz)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    int err;
+    db = weewiki_db(ww);
+
+    err = 0;
+
+    sqlite3_prepare_v2(db,
+    "INSERT INTO wikizet(time, UUID, value) "
+    "SELECT datetime(), ?1, '$' || ?2 || ':' "
+    "WHERE NOT EXISTS (SELECT 1 from wikizet WHERE "
+    "UUID LIKE ?3 AND "
+    "VALUE like '$' || ?4 || ':%');",
+    -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, id->str, -1, NULL);
+    sqlite3_bind_text(stmt, 2, var, sz, NULL);
+    sqlite3_bind_text(stmt, 3, id->str, -1, NULL);
+    sqlite3_bind_text(stmt, 4, var, sz, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        err = 1;
+    }
+
+    sqlite3_finalize(stmt);
+
+    return err;
+}
 #+END_SRC
 ** Setting a Variable to be a Message
 A variable can be set to be a message with
@@ -679,14 +719,25 @@ All variable subcommands get here.
 
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
-static int zet_var(int argc, char *argv[]);
+static int zet_var(weewiki_d *ww, int argc, char *argv[]);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
-static int zet_var(int argc, char *argv[])
+static int zet_var(weewiki_d *ww, int argc, char *argv[])
 {
-    fprintf(stderr, "WIP\n");
+    argc--;
+    argv++;
+
+    if (argc <= 0) {
+        fprintf(stderr, "Please enter a command.\n");
+    }
+
+    if (!strcmp(argv[0], "new")) {
+        return p_varnew(ww, argc, argv);
+    } else {
+        fprintf(stderr, "Could not find command '%s'\n", argv[0]);
+    }
     return 1;
 }
 #+END_SRC
@@ -694,6 +745,48 @@ static int zet_var(int argc, char *argv[])
 usage: new uuid name
 
 creates a new variable called =name=. with a uuid =uuid=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_varnew(weewiki_d *ww, int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_varnew(weewiki_d *ww, int argc, char *argv[])
+{
+    int rc;
+    wwzet_uuid id;
+    const char *idstr;
+    const char *name;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: new UUID name\n");
+        return 1;
+    }
+
+    idstr = argv[1];
+    name = argv[2];
+
+    rc = wwzet_uuid_resolve(ww, idstr, strlen(idstr), &id);
+
+    if (rc) {
+        fprintf(stderr, "Could not resolve '%s'\n", idstr);
+        return 1;
+    }
+
+    rc = wwzet_var_new(ww, &id, name, strlen(name));
+
+    if (rc) {
+        fprintf(stderr,
+                "Issue with creating variable '%s'\n",
+                name);
+        return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
 *** Set
 usage: set uuid name value
 
@@ -1743,8 +1836,19 @@ static int p_var(int argc, char *argv[]);
 #+BEGIN_SRC c
 static int p_var(int argc, char *argv[])
 {
-    argc--;
-    argv++;
-    return zet_var(argc, argv);
+    weewiki_d *ww;
+    int rc;
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    rc = zet_var(ww, argc, argv);
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+
+    return rc;
 }
 #+END_SRC
