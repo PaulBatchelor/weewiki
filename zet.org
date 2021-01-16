@@ -757,7 +757,7 @@ int wwzet_var_message(weewiki_d *ww,
                       const char *var, int vsz,
                       const char *msg, int msz);
 #+END_SRC
-** TODO Command Line Interface
+** WIP Command Line Interface
 Here are some command line operations, all under the
 subcommand "var"
 *** Top Level
@@ -937,7 +937,7 @@ static int p_varlist(weewiki_d *ww, int argc, char *argv[])
     db = weewiki_db(ww);
 
     sqlite3_prepare_v2(db,
-    "SELECT time, UUID, value FROM wikizet "
+    "SELECT datetime(time, 'localtime'), UUID, value FROM wikizet "
     "WHERE UUID in (SELECT UUID from wikizet "
     "WHERE VALUE LIKE '$' || ?1 || ':#' || ?2 "
     "ORDER by strftime(time) ASC);", -1, &stmt, NULL);

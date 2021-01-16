@@ -2630,3 +2630,31 @@ static int p_vacuum(int argc, char *argv[])
     return 0;
 }
 #+END_SRC
+* Clear
+Clears a weewiki database.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"clear", 5, p_clear, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_clear(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_clear(int argc, char *argv[])
+{
+    weewiki_d ww;
+    weewiki_init(&ww);
+    weewiki_open(&ww, weewiki_dbname_get());
+
+    weewiki_clear(&ww);
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return 0;
+}
+#+END_SRC
