@@ -783,6 +783,8 @@ static int zet_var(weewiki_d *ww, int argc, char *argv[])
         return p_varnew(ww, argc, argv);
     } else if (!strcmp(argv[0], "link")) {
         return p_varlink(ww, argc, argv);
+    } else if (!strcmp(argv[0], "list")) {
+        return p_varlist(ww, argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -901,6 +903,67 @@ For example, running =list state @TODO= would list all
 UUIDs with the variable state pointing to the TODO group.
 
 These will be ordered by timestamp in ascending order.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_varlist(weewiki_d *ww, int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_varlist(weewiki_d *ww, int argc, char *argv[])
+{
+    int rc;
+    const char *name;
+    wwzet_uuid ref;
+    const char *refstr;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: list name value\n");
+        return 1;
+    }
+
+    name = argv[1];
+    refstr = argv[2];
+
+    rc = wwzet_uuid_resolve(ww, refstr, strlen(refstr), &ref);
+
+    if (rc) {
+        fprintf(stderr, "Could not resolve '%s'\n", refstr);
+        return 1;
+    }
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+    "SELECT time, UUID, value FROM wikizet "
+    "WHERE UUID in (SELECT UUID from wikizet "
+    "WHERE VALUE LIKE '$' || ?1 || ':#' || ?2 "
+    "ORDER by strftime(time) ASC);", -1, &stmt, NULL);
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+    sqlite3_bind_text(stmt, 2, ref.str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *t, *u, *v;
+
+        t = (const char *)sqlite3_column_text(stmt, 0);
+        u = (const char *)sqlite3_column_text(stmt, 1);
+        v = (const char *)sqlite3_column_text(stmt, 2);
+
+        printf("%s\t%s\t%s\n", (t == NULL ? "-" : t), u, v);
+
+        rc = sqlite3_step(stmt);
+    }
+
+
+    sqlite3_finalize(stmt);
+    return 0;
+}
+#+END_SRC
 *** Set
 usage: set uuid name value
 
