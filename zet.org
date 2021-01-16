@@ -1020,6 +1020,8 @@ int ww_zet(int argc, char *argv[])
         return p_shuffle(argc, argv);
     } else if (!strcmp(argv[0], "var")) {
         return p_var(argc, argv);
+    } else if (!strcmp(argv[0], "rawsay")) {
+        return p_rawsay(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1037,13 +1039,18 @@ zet items.
 static int p_say(int argc, char *argv[]);
 #+END_SRC
 
-#+NAME: funcs
+#+NAME: do_say
 #+BEGIN_SRC c
-static int p_say(int argc, char *argv[])
+static int do_say(int argc, char *argv[], int use_linenoise)
 {
     char *line;
 
-    line = linenoise("say: ");
+    if (use_linenoise) line = linenoise("say: ");
+    else {
+        line = argv[1];
+        argc--;
+        argv++;
+    }
 
     if (line != NULL) {
         weewiki_d *ww;
@@ -1083,12 +1090,37 @@ static int p_say(int argc, char *argv[])
 
         weewiki_close(ww);
         weewiki_clean(ww);
-        free(line);
+        if (use_linenoise) free(line);
         free(ww);
         return 0;
     }
 
     return 1;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+<<do_say>>
+static int p_say(int argc, char *argv[])
+{
+    return do_say(argc, argv, 1);
+}
+#+END_SRC
+
+** rawsay
+like say, but read the message as the first argument.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_rawsay(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_rawsay(int argc, char *argv[])
+{
+    return do_say(argc, argv, 0);
 }
 #+END_SRC
 ** export
