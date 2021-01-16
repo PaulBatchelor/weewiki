@@ -669,16 +669,16 @@ int wwzet_var_new(weewiki_d *ww,
     "INSERT INTO wikizet(time, UUID, value) "
     "SELECT datetime(), ?1, '$' || ?2 || ':' "
     "WHERE NOT EXISTS (SELECT 1 from wikizet WHERE "
-    "UUID LIKE ?3 AND "
-    "VALUE like '$' || ?4 || ':%');",
+    "UUID LIKE ?1 AND "
+    "VALUE like '$' || ?2 || ':%');",
     -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, id->str, -1, NULL);
     sqlite3_bind_text(stmt, 2, var, sz, NULL);
 
     /* TODO: do we need to duplicate? */
 
-    sqlite3_bind_text(stmt, 3, id->str, -1, NULL);
-    sqlite3_bind_text(stmt, 4, var, sz, NULL);
+    /* sqlite3_bind_text(stmt, 3, id->str, -1, NULL); */
+    /* sqlite3_bind_text(stmt, 4, var, sz, NULL); */
 
     rc = sqlite3_step(stmt);
 
@@ -724,12 +724,11 @@ int wwzet_var_link(weewiki_d *ww,
     "SET time = datetime(), "
     "value = '$' || ?1 || ':#' || ?2"
     "WHERE (UUID is ?3 AND "
-    "value LIKE '$' || ?4 || ':%');",
+    "value LIKE '$' || ?1 || ':%');",
     -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, var, sz, NULL);
     sqlite3_bind_text(stmt, 2, ref->str, -1, NULL);
     sqlite3_bind_text(stmt, 3, id->str, -1, NULL);
-    sqlite3_bind_text(stmt, 4, var, sz, NULL);
 
     rc = sqlite3_step(stmt);
 
