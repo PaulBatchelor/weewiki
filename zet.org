@@ -737,6 +737,10 @@ int wwzet_var_link(weewiki_d *ww,
         err = 1;
     }
 
+    if (sqlite3_changes(db) == 0) {
+        err = 1;
+    }
+
     sqlite3_finalize(stmt);
 
     return err;
@@ -881,7 +885,7 @@ static int p_varlink(weewiki_d *ww, int argc, char *argv[])
 
     if (rc) {
         fprintf(stderr,
-                "Issue with creating variable '%s'\n",
+                "Issue linking variable '%s' (does it exist?)\n",
                 name);
         return 1;
     }
