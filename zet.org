@@ -1852,6 +1852,7 @@ static int p_shuffle(int argc, char *argv[])
     pat = argv[2];
 
     db = weewiki_db(ww);
+    stmt = NULL;
 
     if (argc == 3) {
         sqlite3_prepare_v2(db,
