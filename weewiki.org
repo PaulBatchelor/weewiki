@@ -930,7 +930,9 @@ void weewiki_create_tables(weewiki_d *ww)
 }
 #+END_SRC
 ** Push
-Low level operation that pushes a file to a key.
+Low level operation that pushes a file to a key. On error,
+returns a non-zero value.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 int weewiki_push(weewiki_d *ww,
@@ -954,7 +956,7 @@ int weewiki_push(weewiki_d *ww,
 
     if (fp == NULL) {
         fprintf(stderr,
-                "Could not open file %s reading.\n",
+                "Could not open file %s for reading.\n",
                 fname);
         return 1;
     }
@@ -1429,6 +1431,8 @@ static int p_link(int argc, char *argv[])
         rc = weewiki_pull(&ww, argv[1], argv[2]);
     }
 
+    if (rc) goto cleanup;
+
     db = ww.db;
 
     sqlite3_prepare_v2(db,
@@ -1448,6 +1452,7 @@ static int p_link(int argc, char *argv[])
 
     sqlite3_finalize(stmt);
 
+    cleanup:
     weewiki_close(&ww);
     weewiki_clean(&ww);
     return rc;
