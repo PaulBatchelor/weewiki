@@ -757,7 +757,7 @@ int wwzet_var_message(weewiki_d *ww,
                       const char *var, int vsz,
                       const char *msg, int msz);
 #+END_SRC
-** WIP Command Line Interface
+** Command Line Interface
 Here are some command line operations, all under the
 subcommand "var"
 *** Top Level
@@ -777,6 +777,7 @@ static int zet_var(weewiki_d *ww, int argc, char *argv[])
 
     if (argc <= 0) {
         fprintf(stderr, "Please enter a command.\n");
+        return 1;
     }
 
     if (!strcmp(argv[0], "new")) {
