@@ -1126,6 +1126,8 @@ int ww_zet(int argc, char *argv[])
         return p_var(argc, argv);
     } else if (!strcmp(argv[0], "rawsay")) {
         return p_rawsay(argc, argv);
+    } else if (!strcmp(argv[0], "tags")) {
+        return p_tags(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2152,5 +2154,75 @@ static int p_var(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-** TODO tags
+** tags
 Print tags that a particular UUID is linked to.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_tags(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_tags(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    wwzet_uuid uuid;
+
+    if (argc <= 1) {
+        fprintf(stderr, "Usage: %s tags UUID\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+    rc = 0;
+    rc = wwzet_uuid_resolve(ww,
+                            argv[1],
+                            strlen(argv[1]),
+                            &uuid);
+    if (rc) {
+        fprintf(stderr, "Could not resolve %s\n", argv[1]);
+        goto clean;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+    "SELECT substr(g.value, 2) from wikizet "
+    "INNER JOIN "
+    "(SELECT value, UUID FROM wikizet WHERE value LIKE '@%') g "
+    "ON wikizet.value = '#' || g.UUID "
+    "WHERE wikizet.UUID "
+    "LIKE ?1;",
+    -1, &stmt, NULL);
+
+    if (rc) {
+       fprintf(stderr, "SQLite: %s\n", sqlite3_errmsg(db));
+       goto clean;
+    }
+
+    sqlite3_bind_text(stmt, 1, uuid.str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        printf("%s\n", sqlite3_column_text(stmt, 0));
+        rc = sqlite3_step(stmt);
+    }
+
+    rc = 0;
+    sqlite3_finalize(stmt);
+
+    clean:
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
+}
+#+END_SRC
