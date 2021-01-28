@@ -1128,6 +1128,8 @@ int ww_zet(int argc, char *argv[])
         return p_rawsay(argc, argv);
     } else if (!strcmp(argv[0], "tags")) {
         return p_tags(argc, argv);
+    } else if (!strcmp(argv[0], "entry")) {
+        return p_entry(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2022,12 +2024,6 @@ static int p_shuffle(int argc, char *argv[])
     return err;
 }
 #+END_SRC
-** info
-Gets information on a particular zet item. A partial
-UUID value can be provided.
-** lookup
-given a partial UUID, try to find the full matching
-UUID. If more than one is found. return an error.
 ** groups
 prints list of groups and their UUIDs.
 
@@ -2212,6 +2208,80 @@ static int p_tags(int argc, char *argv[])
 
     while (rc == SQLITE_ROW) {
         printf("%s\n", sqlite3_column_text(stmt, 0));
+        rc = sqlite3_step(stmt);
+    }
+
+    rc = 0;
+    sqlite3_finalize(stmt);
+
+    clean:
+
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
+}
+#+END_SRC
+** entry
+Usage: entry UUID
+
+Looks up entry UUID and prints all items with that UUID.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_entry(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_entry(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    int rc;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    wwzet_uuid uuid;
+
+    if (argc <= 1) {
+        fprintf(stderr, "Usage: %s UUID\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+    rc = 0;
+    rc = wwzet_uuid_resolve(ww,
+                            argv[1],
+                            strlen(argv[1]),
+                            &uuid);
+    if (rc) {
+        fprintf(stderr, "Could not resolve %s\n", argv[1]);
+        goto clean;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+    "SELECT time, UUID, value from wikizet "
+    "WHERE wikizet.UUID IS ?1;",
+    -1, &stmt, NULL);
+
+    if (rc) {
+       fprintf(stderr, "SQLite: %s\n", sqlite3_errmsg(db));
+       goto clean;
+    }
+
+    sqlite3_bind_text(stmt, 1, uuid.str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const char *t, *u, *v;
+        t = (const char *)sqlite3_column_text(stmt, 0);
+        u = (const char *)sqlite3_column_text(stmt, 1);
+        v = (const char *)sqlite3_column_text(stmt, 2);
+        printf("%s\t%s\t%s\n", t == NULL ? "-" : t, u, v);
         rc = sqlite3_step(stmt);
     }
 
