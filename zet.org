@@ -800,6 +800,60 @@ int wwzet_var_message(weewiki_d *ww,
     return err;
 }
 #+END_SRC
+** Touching A Variable
+=wwzet_var_touch= will touch a variable in a UUID, updating
+the timestamp to the present. Touch gets its name from the
+Unix command which is used in a similar way.
+
+If the variable can't be found or another error happens,
+a non-zero value will be returned.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_var_touch(weewiki_d *ww,
+                    wwzet_uuid *id,
+                    const char *var, int vsz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_var_touch(weewiki_d *ww,
+                    wwzet_uuid *id,
+                    const char *var, int vsz)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+    int err;
+    db = weewiki_db(ww);
+
+    err = 0;
+
+    sqlite3_prepare_v2(db,
+    "UPDATE wikizet "
+    "SET time = datetime() "
+    "WHERE (UUID is ?2 AND "
+    "value LIKE '$' || ?1 || ':%');",
+    -1, &stmt, NULL);
+    sqlite3_bind_text(stmt, 1, var, vsz, NULL);
+    sqlite3_bind_text(stmt, 2, id->str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        err = 1;
+    }
+
+    if (sqlite3_changes(db) == 0) {
+        err = 1;
+    }
+
+    sqlite3_finalize(stmt);
+
+    return err;
+}
+#+END_SRC
 ** Command Line Interface
 Here are some command line operations, all under the
 subcommand "var"
@@ -831,6 +885,8 @@ static int zet_var(weewiki_d *ww, int argc, char *argv[])
         return p_varlist(ww, argc, argv);
     } else if (!strcmp(argv[0], "set")) {
         return p_varset(ww, argc, argv);
+    } else if (!strcmp(argv[0], "touch")) {
+        return p_vartouch(ww, argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1010,7 +1066,7 @@ static int p_varlist(weewiki_d *ww, int argc, char *argv[])
     return 0;
 }
 #+END_SRC
-*** TODO Set
+*** Set
 usage: set uuid name value
 
 Sets the variable =name= to be =value=. Note that this
@@ -1077,6 +1133,54 @@ static int p_varset(weewiki_d *ww, int argc, char *argv[])
 usage: get uuid name
 
 gets the variable =name= associated with =uuid=.
+*** Touch
+usage: touch uuid varname
+
+Update the timestamp of a variable to the present.
+Useful in programs like zetdo where lists are ordered
+chronologically.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_vartouch(weewiki_d *ww, int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_vartouch(weewiki_d *ww, int argc, char *argv[])
+{
+    int rc;
+    wwzet_uuid id;
+    const char *idstr;
+    const char *name;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: touch UUID varname\n");
+        return 1;
+    }
+
+    idstr = argv[1];
+    name = argv[2];
+
+    rc = wwzet_uuid_resolve(ww, idstr, strlen(idstr), &id);
+
+    if (rc) {
+        fprintf(stderr, "Could not resolve '%s'\n", idstr);
+        return 1;
+    }
+
+    rc = wwzet_var_touch(ww, &id, name, strlen(name));
+
+    if (rc) {
+        fprintf(stderr,
+                "Issue setting variable '%s' (does it exist?)\n",
+                name);
+        return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
 * Command Line Operations
 ** top-level processor
 The entry point for the top-level CLI is done with
