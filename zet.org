@@ -287,6 +287,9 @@ int wwzet_uuid_fromval(weewiki_d *ww,
     return err;
 }
 #+END_SRC
+*** TODO Get UUID from ergo ID
+=wwzet_uuid_fromergo= will expand a UUID expressed in
+ergo format.
 *** Resolve a UUID
 =wwzet_uuid_resolve= smartly resolves a UUID from
 a string value. Will return a non-zero value on error.
@@ -626,6 +629,61 @@ int wwzet_group(weewiki_d *ww,
     return wwzet_entry_withsymbol(ww, '@', filename, sz, uuid);
 }
 #+END_SRC
+** TODO Ergo IDs
+Ergonomic IDs, or Ergo IDs are a way of of representing
+UUIDs in a more typist-friendly QWERTY format. traditional
+representations of hex values are replaced by easy to
+access characters in the QWERTY format.
+
+So. What are the easy characters?
+
+The home row is easiest: asdfghjkl;
+
+The top row comes next: qwertyuiop
+
+The keys that do not require any extensions are the most
+ergonomically efficient. These include:
+
+home: asdfjkl;
+
+top: qweruiop
+
+The semi-colon ';' is a bit of an outlier. To limit things
+to only the alphabet, one could use 'h', which is familiar
+enough for vi-inclined individuals used to hjkl.
+
+So that leaves us with:
+
+home: asdfhjkl
+
+top: qweruoip
+
+treating the number system as left-to-right, home-to-top,
+we get:
+
+asdfhjklqwertuio
+
+0123456789abcdef
+
+Convert from a hex string to ergo ID with
+=wwzet_hex_to_ergo=.
+
+Converting to this ergo-id format is a pretty
+straightforward process. convert the ascii hex value to a
+number and send it to a lookup table which is just an array.
+
+Convert from ergo to hex string with =wwzet_ergo_to_hex=.
+
+Converting from the ergo-id to the hex value is a little
+less straightforward.
+
+A lookup table will be produced by sorting the values in
+ascii order:
+
+adefhijklopqrsuw
+
+or ascii values 97-112. which means a lookup table of size
+22 with empty values.
 * Variables
 ** Variables Overview
 A variable type in zet is a thing that can be chaned over
@@ -2400,3 +2458,6 @@ static int p_entry(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
+** TODO ergoify
+The =ergoify= command takes the UUID an incoming zet tsv
+stream and converts it to an ergo ID.
