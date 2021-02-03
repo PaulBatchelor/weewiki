@@ -2670,7 +2670,8 @@ static int p_ergoify(int argc, char *argv[])
 
         printf("\t");
         off += size + 1;
-        size = len - off;
+        size = read - off;
+
         fwrite(&line[off], 1, size, stdout);
 
     }
