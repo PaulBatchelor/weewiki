@@ -287,9 +287,39 @@ int wwzet_uuid_fromval(weewiki_d *ww,
     return err;
 }
 #+END_SRC
-*** TODO Get UUID from ergo ID
+*** Get UUID from ergo ID
 =wwzet_uuid_fromergo= will expand a UUID expressed in
 ergo format.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_uuid_fromergo(weewiki_d *ww,
+                        const char *ergo,
+                        int sz,
+                        wwzet_uuid *uuid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_uuid_fromergo(weewiki_d *ww,
+                        const char *ergo,
+                        int sz,
+                        wwzet_uuid *uuid)
+{
+    char *partial;
+    int rc;
+
+    partial = calloc(1, sz + 1);
+
+    wwzet_ergo_to_hex(ergo, sz, partial);
+
+    rc = wwzet_uuid_expand(ww, partial, sz, uuid);
+
+    free(partial);
+
+    return rc;
+}
+#+END_SRC
 *** Resolve a UUID
 =wwzet_uuid_resolve= smartly resolves a UUID from
 a string value. Will return a non-zero value on error.
@@ -333,6 +363,9 @@ int wwzet_uuid_resolve(weewiki_d *ww,
     if (special_prefix) {
         rc = wwzet_uuid_fromval(ww, val, sz, uuid);
         if (rc) err = 1;
+    } else if (val[0] == 'g') {
+        rc = wwzet_uuid_fromergo(ww, val + 1, sz - 1, uuid);
+        if (rc != 1) err = 1;
     } else {
         rc = wwzet_uuid_expand(ww, val, sz, uuid);
         if (rc != 1) err = 1;
@@ -629,7 +662,7 @@ int wwzet_group(weewiki_d *ww,
     return wwzet_entry_withsymbol(ww, '@', filename, sz, uuid);
 }
 #+END_SRC
-** TODO Ergo IDs
+** Ergo IDs
 Ergonomic IDs, or Ergo IDs are a way of of representing
 UUIDs in a more typist-friendly QWERTY format. traditional
 representations of hex values are replaced by easy to
@@ -661,29 +694,107 @@ top: qweruoip
 treating the number system as left-to-right, home-to-top,
 we get:
 
-asdfhjklqwertuio
+asdfhjklqweruiop
 
 0123456789abcdef
 
 Convert from a hex string to ergo ID with
 =wwzet_hex_to_ergo=.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_hex_to_ergo(const char *hex, int sz, char *ergo);
+#+END_SRC
+
 Converting to this ergo-id format is a pretty
 straightforward process. convert the ascii hex value to a
 number and send it to a lookup table which is just an array.
 
+#+NAME: funcs
+#+BEGIN_SRC c
+<<hexergo_lookup>>
+void wwzet_hex_to_ergo(const char *hex, int sz, char *ergo)
+{
+    int i;
+
+    for (i = 0; i < sz; i++) {
+        int pos;
+
+        pos = -1;
+        if (hex[i] >= '0' && hex[i] <= '9') {
+            pos = hex[i] - '0';
+        } else if (hex[i] >= 'a' && hex[i] <= 'f') {
+            pos = (hex[i] - 'a') + 10;
+        }
+
+        if (pos >= 0) {
+            ergo[i] = hexergo[pos];
+        } else {
+            ergo[i] = hex[i];
+        }
+    }
+
+    ergo[sz] = '\0';
+}
+#+END_SRC
+
+#+NAME: hexergo_lookup
+#+BEGIN_SRC c
+static const char *hexergo = "asdfhjklqweruiop";
+#+END_SRC
+
 Convert from ergo to hex string with =wwzet_ergo_to_hex=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void wwzet_ergo_to_hex(const char *ergo, int sz, char *hex);
+#+END_SRC
 
 Converting from the ergo-id to the hex value is a little
 less straightforward.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+<<ergohex_lookup>>
+void wwzet_ergo_to_hex(const char *ergo, int sz, char *hex)
+{
+    int i;
+    for (i = 0; i < sz; i++) {
+        if (ergo[i] >= 'a' && ergo[i] <= 'w') {
+            int pos = ergo[i] - 'a';
+            hex[i] = ergohex[pos];
+        } else {
+            hex[i] = ergo[i];
+        }
+    }
+}
+#+END_SRC
 
 A lookup table will be produced by sorting the values in
 ascii order:
 
 adefhijklopqrsuw
 
+with the corresponding hex values:
+
+02a34d567ef8b1c9
+
+With '?' as filler:
+
+a??def?hijkl??opqrs?u?w
+
+or
+
+0??2a3?4d567??ef8b1?c?9
+
+
 or ascii values 97-112. which means a lookup table of size
-22 with empty values.
+23 with empty values.
+
+#+NAME: ergohex_lookup
+#+BEGIN_SRC c
+static const char *ergohex = "0??2a3?4d567??ef8b1?c?9";
+#+END_SRC
 * Variables
 ** Variables Overview
 A variable type in zet is a thing that can be chaned over
@@ -732,11 +843,6 @@ int wwzet_var_new(weewiki_d *ww,
     -1, &stmt, NULL);
     sqlite3_bind_text(stmt, 1, id->str, -1, NULL);
     sqlite3_bind_text(stmt, 2, var, sz, NULL);
-
-    /* TODO: do we need to duplicate? */
-
-    /* sqlite3_bind_text(stmt, 3, id->str, -1, NULL); */
-    /* sqlite3_bind_text(stmt, 4, var, sz, NULL); */
 
     rc = sqlite3_step(stmt);
 
@@ -1292,6 +1398,8 @@ int ww_zet(int argc, char *argv[])
         return p_tags(argc, argv);
     } else if (!strcmp(argv[0], "entry")) {
         return p_entry(argc, argv);
+    } else if (!strcmp(argv[0], "ergoify")) {
+        return p_ergoify(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2458,6 +2566,116 @@ static int p_entry(int argc, char *argv[])
     return rc;
 }
 #+END_SRC
-** TODO ergoify
+** ergoify
 The =ergoify= command takes the UUID an incoming zet tsv
 stream and converts it to an ergo ID.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_ergoify(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static size_t smol_getline(char **lineptr, size_t *n, FILE *stream)
+{
+    char *bufptr = NULL;
+    size_t size;
+    int c;
+    size_t pos;
+
+    if (lineptr == NULL) {
+        return -1;
+    }
+
+    if (stream == NULL) {
+        return -1;
+    }
+
+    if (n == NULL) {
+        return -1;
+    }
+
+    bufptr = *lineptr;
+    size = *n;
+
+    c = fgetc(stream);
+
+    if (c == EOF) {
+        return -1;
+    }
+
+    if (bufptr == NULL) {
+        bufptr = malloc(128);
+        if (bufptr == NULL) {
+            return -1;
+        }
+        size = 128;
+    }
+
+    pos = 0;
+
+    while(c != EOF) {
+        if (pos >= (size - 1)) {
+            size = size + 128;
+            bufptr = realloc(bufptr, size);
+            if (bufptr == NULL) {
+                return -1;
+            }
+        }
+        bufptr[pos] = (char)c;
+        pos++;
+        if (c == '\n') {
+            break;
+        }
+        c = fgetc(stream);
+    }
+
+    bufptr[pos] = '\0';
+    (*lineptr) = bufptr;
+    (*n) = size;
+    return pos;
+}
+
+static int p_ergoify(int argc, char *argv[])
+{
+    FILE *fp;
+    size_t len;
+    long read;
+    char *line;
+    char tmp[64];
+
+    len = 0;
+    line = NULL;
+
+    fp = stdin;
+
+    while ((read = smol_getline(&line, &len, fp)) != -1) {
+        int off, size;
+
+        off = 0;
+
+        size = 0;
+
+        while (line[off + size] != '\t') size++;
+        fwrite(&line[off], 1, size, stdout);
+
+        printf("\tg");
+        off += size + 1;
+        size = 0;
+        while (line[off + size] != '\t') size++;
+        wwzet_hex_to_ergo(&line[off], size, tmp);
+        /* fwrite(&line[off], 1, size, stdout); */
+        fwrite(tmp, 1, size, stdout);
+
+        printf("\t");
+        off += size + 1;
+        size = len - off;
+        fwrite(&line[off], 1, size, stdout);
+
+    }
+
+    free(line);
+    return 0;
+}
+#+END_SRC
