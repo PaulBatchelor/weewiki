@@ -1400,6 +1400,10 @@ int ww_zet(int argc, char *argv[])
         return p_entry(argc, argv);
     } else if (!strcmp(argv[0], "ergoify")) {
         return p_ergoify(argc, argv);
+    } else if (!strcmp(argv[0], "uuid")) {
+        return p_uuid(argc, argv);
+    } else if (!strcmp(argv[0], "ergo")) {
+        return p_ergo(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2677,6 +2681,53 @@ static int p_ergoify(int argc, char *argv[])
     }
 
     free(line);
+    return 0;
+}
+#+END_SRC
+** UUID
+Generates a UUIDv4 number.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_uuid(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_uuid(int argc, char *argv[])
+{
+    wwzet_uuid uuid;
+    wwzet_uuid_rng_init();
+    wwzet_uuid_init(&uuid);
+    wwzet_uuid_generate(&uuid);
+    fwrite(uuid.str, 1, 36, stdout);
+    return 0;
+}
+#+END_SRC
+** ergo
+Converts an incoming string to ergo. Ignores non-hexademical
+characters.
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_ergo(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_ergo(int argc, char *argv[])
+{
+    int len;
+
+    if (argc == 1) {
+        fprintf(stderr, "Usage: %s str\n", argv[0]);
+        return 1;
+    }
+
+    len = strlen(argv[1]);
+    wwzet_hex_to_ergo(argv[1], len, argv[1]);
+
+    fwrite(argv[1], 1, len, stdout);
+    fflush(stdout);
     return 0;
 }
 #+END_SRC
