@@ -21,6 +21,7 @@ in weewiki documents.
 
 #include "orgparse.h"
 #include "weewiki.h"
+#include "zet.h"
 
 #include "jan.h"
 <<static_funcdefs>>
@@ -156,6 +157,7 @@ void weewiki_janet_cfuns(JanetTable *env);
 #+END_SRC
 #+NAME: functions
 #+BEGIN_SRC c
+<<janet_funcs>>
 void weewiki_janet_sqlite(JanetTable *env);
 void weewiki_janet_cfuns(JanetTable *env)
 {
@@ -489,5 +491,41 @@ static Janet cfun_dbname_get(int32_t argc, Janet *argv)
 {
     janet_fixarity(argc, 0);
     return janet_wrap_string(weewiki_dbname_get());
+}
+#+END_SRC
+** Zet Resolve
+=ww-zet-resolve= is a function that resolves a UUID.
+If no ID is found, an error is thrown.
+
+#+NAME: janet_defs
+#+BEGIN_SRC c
+janet_def(env,
+          "ww-zet-resolve",
+          janet_wrap_cfunction(cfun_zet_resolve),
+          NULL);
+#+END_SRC
+
+#+NAME: janet_funcs
+#+BEGIN_SRC c
+static Janet cfun_zet_resolve(int32_t argc, Janet *argv)
+{
+    const char *str;
+    weewiki_d *ww;
+    wwzet_uuid uuid;
+    int rc;
+
+
+    janet_fixarity(argc, 1);
+    str = (const char *)janet_getstring(argv, 0);
+    weewiki_dbname_set(str);
+    ww = weewiki_get();
+
+    rc = wwzet_uuid_resolve(ww, str, strlen(str), &uuid);
+
+    if (rc) {
+        janet_panicf("Could not resolve %s\n", str);
+    }
+
+    return janet_wrap_string(janet_string((const unsigned char *)uuid.str, 36));
 }
 #+END_SRC
