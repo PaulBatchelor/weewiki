@@ -1750,9 +1750,9 @@ static void html_header(void *ud,
     ex = ud;
     fp = ex->fp;
     lvl++;
-    fprintf(fp, "\n<h%d>", lvl + 1);
+    fprintf(fp, "\n<h%d>", lvl);
     fwrite(h, 1, sz, fp);
-    fprintf(fp, "</h%d>\n\n", lvl + 1);
+    fprintf(fp, "</h%d>\n\n", lvl);
 }
 #+END_SRC
 #+NAME: orgparse_html_setup
