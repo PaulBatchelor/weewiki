@@ -2509,7 +2509,7 @@ static int p_tags(int argc, char *argv[])
     wwzet_uuid uuid;
 
     if (argc <= 1) {
-        fprintf(stderr, "Usage: %s tags UUID\n", argv[0]);
+        fprintf(stderr, "Usage: %s UUID\n", argv[0]);
         return 1;
     }
 
