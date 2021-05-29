@@ -1140,7 +1140,7 @@ static int test_nlformpe(void)
     return rc;
 }
 #+END_SRC
-*** TODO Paragraphs ending with link causes newline
+*** Paragraphs ending with link causes newline
 This text:
 #+BEGIN_SRC text
 [[link]]
@@ -1237,6 +1237,7 @@ test will measure for both.
 #+BEGIN_SRC c
 {"Tag line break + space checker", test_linebreak},
 #+END_SRC
+
 #+NAME: tests
 #+BEGIN_SRC c
 static void linebreak_code(void *ud,
@@ -1376,6 +1377,87 @@ static int test_onat(void)
 
     if (npgrph == 0) {
         fprintf(stderr, "0 paragraphs: is this thing working?\n");
+        rc = FAIL;
+    }
+
+    return rc;
+}
+#+END_SRC
+*** Bold text before newline does not end paragraph
+The following text correctly produces two paragraphs.
+
+#+BEGIN_SRC text
+*a*.
+
+b
+#+END_SRC
+
+#+BEGIN_SRC text
+PARAGRAPH BEGIN
+bold: 'a'
+text: '.
+'
+PARAGRAPH END
+PARAGRAPH BEGIN
+text: 'b
+'
+PARAGRAPH END
+#+END_SRC
+
+Remove the '.', and only one paragraph is created.
+
+#+BEGIN_SRC text
+*a*
+
+b
+#+END_SRC
+
+#+BEGIN_SRC text
+PARAGRAPH BEGIN
+bold: 'a'
+text: '
+
+'
+text: 'b
+'
+PARAGRAPH END
+#+END_SRC
+
+The line break is incorrectly interpretted as just text, not
+a paragraph end.
+
+#+NAME: test_entries
+#+BEGIN_SRC c
+{"bold text right before newline", test_boldtextnl},
+#+END_SRC
+
+#+NAME: tests
+#+BEGIN_SRC c
+static void boldtext_pbegin(void *ud, int mode)
+{
+    int *count;
+    count = ud;
+    if (!mode) *count = *count + 1;
+}
+
+static int test_boldtextnl(void)
+{
+    orgparse op;
+    int count;
+    int rc;
+    const char *txt = "*a*\n\nb\n";
+
+    rc = OK;
+    orgparse_init(&op);
+
+    orgparse_set_pgrph(&op, boldtext_pbegin);
+
+    count = 0;
+
+    orgparse_run(&op, txt, strlen(txt), &count);
+
+    if (count != 2) {
+        printf("Expected 2 paragraphs, got %d\n", count);
         rc = FAIL;
     }
 
