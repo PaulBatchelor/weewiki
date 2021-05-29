@@ -2239,6 +2239,23 @@ formatting tags and links on a line by line basis.
 #+BEGIN_SRC c
 static int parse_text(orgparse_state *state);
 #+END_SRC
+
+Some clarification details on what =mark= variable does.
+=mark= is used to save the beginning of a chunk
+of unformatted text. It is called "mark" because it
+is marking a location. When formatted text is found, it
+will use this marked position to handle the text preceding
+the formatted text, before handling the formatted text. The
+marked position can then be updated to point to text after
+the formatted text.
+
+The =mark= variable is also used in line break logic. When
+a line break is found and the mark and text positions match,
+which means a line break has been found at the start of a
+line. For some reason, I decided to use =mark= instead of
+=start=. I think this has to do with the logic found in
+=check_and_parse=, but I'm unsure.
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int parse_text(orgparse_state *state)
@@ -2415,8 +2432,23 @@ static int check_and_parse(orgparse *op,
                            char tag,
                            orgparse_text f);
 #+END_SRC
+
 Setting the =mark= and =pos= variables for mark and position
-took some trial and error to get right.
+took some trial and error to get right. At some point,
+I'll need to put in the time and figure this out better.
+
+The gist of it as I understand it now: =mark= is
+used to handle text preceding formatted text found
+with =check_and_parse=, and =pos= is pointer to
+the current character in the parser function
+=parse_text=.
+
+When a line break is found, the marker is shifted forward by
+one. In the next loop iteration in =parse_text=, the text
+position will also shift forward to match the marker, which
+is important, as this equality is needed to trigger a
+paragraph end if a consecutive line break is found.
+
 #+NAME: functions
 #+BEGIN_SRC c
 static int check_and_parse(orgparse *op,
@@ -2449,8 +2481,9 @@ static int check_and_parse(orgparse *op,
         }
         n += len + 2;
         m = n;
-        /* commenting this out makes the tests pass */
-        /* if (n < sz && str[n] == '\n') n--; */
+
+        /* move the marker up if current character is line break */
+        if (n < sz && str[n] == '\n') m++;
         *pos = n;
         *mark = m;
         rc = 1;
