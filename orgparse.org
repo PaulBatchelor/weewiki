@@ -194,7 +194,7 @@ static void test_newline(void *ud,
                          const char *str,
                          size_t sz)
 {
-    printf("newline\n");
+    printf("NEWLINE\n");
 }
 #+END_SRC
 #+NAME: setup_test_callbacks
