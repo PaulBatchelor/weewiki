@@ -1053,6 +1053,8 @@ static int zet_var(weewiki_d *ww, int argc, char *argv[])
         return p_vartouch(ww, argc, argv);
     } else if (!strcmp(argv[0], "get")) {
         return p_varget(ww, argc, argv);
+    } else if (!strcmp(argv[0], "create")) {
+        return p_varcreate(ww, argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -1407,6 +1409,51 @@ static int p_vartouch(weewiki_d *ww, int argc, char *argv[])
                 name);
         return 1;
     }
+
+    return 0;
+}
+#+END_SRC
+*** Create
+usage: create name
+
+The =create= command creates a brand new zet entry with UUID
+with a variable. This is similar to =new=, except that a
+UUID doesn't need to exist.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_varcreate(weewiki_d *ww, int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_varcreate(weewiki_d *ww, int argc, char *argv[])
+{
+    int rc;
+    wwzet_uuid id;
+    const char *name;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: create name\n");
+        return 1;
+    }
+
+    wwzet_uuid_rng_init();
+    wwzet_uuid_init(&id);
+    wwzet_uuid_generate(&id);
+
+    name = argv[1];
+
+    rc = wwzet_var_new(ww, &id, name, strlen(name));
+
+    if (rc) {
+        fprintf(stderr,
+                "Issue with creating variable '%s'\n",
+                name);
+        return 1;
+    }
+
+    printf("%s\n", id.str);
 
     return 0;
 }
