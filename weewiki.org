@@ -679,6 +679,7 @@ The solution to this is: =VACUUM=.
 #+BEGIN_SRC c
 void weewiki_clear(weewiki_d *ww)
 {
+    sqlite3_exec(ww->db, "BEGIN;\n", NULL, NULL, NULL);
     sqlite3_exec(ww->db,
                 "DELETE FROM wiki WHERE 1;\n",
                 NULL,
@@ -699,6 +700,7 @@ void weewiki_clear(weewiki_d *ww)
                 NULL,
                 NULL,
                 NULL);
+    sqlite3_exec(ww->db, "COMMIT;\n", NULL, NULL, NULL);
 }
 #+END_SRC
 ** Parsing
