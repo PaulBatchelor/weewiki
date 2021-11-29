@@ -2613,6 +2613,8 @@ static int p_tags(int argc, char *argv[])
 Usage: entry UUID
 
 Looks up entry UUID and prints all items with that UUID.
+Note that the timestamp is printed as localtime not UTC
+and should not be used as an exporter to TSV.
 
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
@@ -2650,7 +2652,7 @@ static int p_entry(int argc, char *argv[])
     }
 
     rc = sqlite3_prepare_v2(db,
-    "SELECT time, UUID, value from wikizet "
+    "SELECT datetime(time, 'localtime'), UUID, value from wikizet "
     "WHERE wikizet.UUID IS ?1;",
     -1, &stmt, NULL);
 
