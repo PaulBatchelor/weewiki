@@ -1517,6 +1517,8 @@ int ww_zet(int argc, char *argv[])
         return p_uuid(argc, argv);
     } else if (!strcmp(argv[0], "ergo")) {
         return p_ergo(argc, argv);
+    } else if (!strcmp(argv[0], "mkfile")) {
+        return p_mkfile(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2843,6 +2845,41 @@ static int p_ergo(int argc, char *argv[])
 
     fwrite(argv[1], 1, len, stdout);
     fflush(stdout);
+    return 0;
+}
+#+END_SRC
+** mkfile
+makes a new file path link.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_mkfile(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_mkfile(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    wwzet_uuid uuid;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s file\n", argv[0]);
+        return 1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    wwzet_uuid_rng_init();
+    wwzet_uuid_init(&uuid);
+
+    wwzet_file(ww, argv[1], strlen(argv[1]), &uuid);
+    printf("%s\n", uuid.str);
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
     return 0;
 }
 #+END_SRC
