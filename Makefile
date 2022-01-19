@@ -29,7 +29,7 @@ ifneq ($(OS), Darwin)
 CFLAGS += -Wl,--export-dynamic
 endif
 
-LIBS=-lsqlite3
+LIBS=-lsqlite3 -lm -lpthread -ldl
 
 ifeq ($(WWSERVER), 1)
 CFLAGS += -DWWSERVER
