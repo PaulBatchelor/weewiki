@@ -1519,6 +1519,8 @@ int ww_zet(int argc, char *argv[])
         return p_ergo(argc, argv);
     } else if (!strcmp(argv[0], "mkfile")) {
         return p_mkfile(argc, argv);
+    } else if (!strcmp(argv[0], "linked")) {
+        return p_linked(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2881,5 +2883,91 @@ static int p_mkfile(int argc, char *argv[])
     weewiki_clean(ww);
     free(ww);
     return 0;
+}
+#+END_SRC
+** linked
+Usage: linked UUID1 UUID2
+
+Will check if a particular link has already been made
+between 2 UUIDs (UUID1 -> UUID2)
+
+Will print (and return) 1 if a link has been made already,
+and a 0 if it hasn't.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_linked(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_linked(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    wwzet_uuid uuid[2];
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    if (argc < 3) {
+        fprintf(stderr, "Usage: %s UUID1 UUID2\n", argv[0]);
+        return -1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+    rc = 0;
+
+    rc = wwzet_uuid_resolve(ww,
+                            argv[1],
+                            strlen(argv[1]),
+                            &uuid[0]);
+    if (rc) {
+        fprintf(stderr, "Could not resolve %s\n", argv[1]);
+        goto clean;
+    }
+
+    rc = wwzet_uuid_resolve(ww,
+                            argv[2],
+                            strlen(argv[2]),
+                            &uuid[1]);
+    if (rc) {
+        fprintf(stderr, "Could not resolve %s\n", argv[2]);
+        goto clean;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+    "SELECT EXISTS(SELECT UUID from wikizet WHERE "
+    "UUID is ?1 "
+    "AND value IS '#' || ?2);",
+    -1, &stmt, NULL);
+
+    if (rc) {
+       fprintf(stderr, "SQLite: %s\n", sqlite3_errmsg(db));
+       goto clean;
+    }
+
+    sqlite3_bind_text(stmt, 1, uuid[0].str, -1, NULL);
+    sqlite3_bind_text(stmt, 2, uuid[1].str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    rc = sqlite3_column_int(stmt, 0);
+
+    if (rc) {
+        fprintf(stderr, "%s is already linked to %s\n",
+            argv[1], argv[2]);
+    }
+
+    sqlite3_finalize(stmt);
+
+    clean:
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
 }
 #+END_SRC
