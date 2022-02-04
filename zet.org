@@ -795,6 +795,61 @@ or ascii values 97-112. which means a lookup table of size
 #+BEGIN_SRC c
 static const char *ergohex = "0??2a3?4d567??ef8b1?c?9";
 #+END_SRC
+** Check if entry exists
+Usually for things like groups, you want to ensure
+that it is unique. This function will query a value
+with a symbol and report of it exists already.
+
+=wwzet_entry_exists= will check if a string value
+=val= of size =sz= exists with a prepended symbol =sym=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int wwzet_entry_exists(weewiki_d *ww,
+                       char sym,
+                       const char *val,
+                       int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int wwzet_entry_exists(weewiki_d *ww,
+                       char sym,
+                       const char *val,
+                       int sz)
+{
+    int exists;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    exists = 0;
+
+    db = weewiki_db(ww);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT EXISTS( "
+                       "SELECT value FROM wikizet WHERE "
+                       "value IS ?1 || ?2);",
+                       -1, &stmt, NULL);
+
+    sqlite3_bind_text(stmt, 1, &sym, 1, NULL);
+    sqlite3_bind_text(stmt, 2, val, sz, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_ROW) {
+        fprintf(stderr, "SQLite: '%s'\n", sqlite3_errmsg(db));
+        exists = -1;
+    } else {
+        exists = sqlite3_column_int(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return exists;
+}
+#+END_SRC
 * Variables
 ** Variables Overview
 A variable type in zet is a thing that can be chaned over
@@ -2119,6 +2174,8 @@ static int p_mkgroup(int argc, char *argv[])
 {
     weewiki_d *ww;
     wwzet_uuid uuid;
+    int sz;
+    int rc;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s group\n", argv[0]);
@@ -2132,10 +2189,24 @@ static int p_mkgroup(int argc, char *argv[])
     wwzet_uuid_rng_init();
     wwzet_uuid_init(&uuid);
 
+    sz = strlen(argv[1]);
+
+    rc = wwzet_entry_exists(ww, '@', argv[1], sz);
+
+    if (rc) {
+        if (rc == 1) {
+            fprintf(stderr, "group '%s' already exists\n", argv[1]);
+        }
+
+        /* rc of -1 is a SQLite error */
+
+        return 2;
+    }
+
     wwzet_entry_withsymbol(ww,
                            '@',
                            argv[1],
-                           strlen(argv[1]),
+                           sz,
                            &uuid);
     printf("%s\n", uuid.str);
     weewiki_close(ww);
@@ -2163,6 +2234,7 @@ static int p_mkpage(int argc, char *argv[])
     int rc;
     const char *page;
     int err;
+    int sz;
 
     if (argc < 2) {
         fprintf(stderr, "Usage: %s page\n", argv[0]);
@@ -2176,6 +2248,7 @@ static int p_mkpage(int argc, char *argv[])
     weewiki_open(ww, weewiki_dbname_get());
 
     page = argv[1];
+    sz = strlen(page);
 
     rc = weewiki_exists(ww, page);
 
@@ -2188,10 +2261,22 @@ static int p_mkpage(int argc, char *argv[])
     wwzet_uuid_rng_init();
     wwzet_uuid_init(&uuid);
 
+    rc = wwzet_entry_exists(ww, '!', argv[1], sz);
+
+    if (rc) {
+        if (rc == 1) {
+            fprintf(stderr, "page '%s' already exists\n", argv[1]);
+        }
+
+        /* rc of -1 is a SQLite error */
+
+        return 2;
+    }
+
     wwzet_entry_withsymbol(ww,
                            '!',
                            page,
-                           strlen(page),
+                           sz,
                            &uuid);
 
     printf("%s\n", uuid.str);
