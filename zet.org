@@ -1521,6 +1521,8 @@ int ww_zet(int argc, char *argv[])
         return p_mkfile(argc, argv);
     } else if (!strcmp(argv[0], "linked")) {
         return p_linked(argc, argv);
+    } else if (!strcmp(argv[0], "tie")) {
+        return p_tie(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -2969,5 +2971,32 @@ static int p_linked(int argc, char *argv[])
     weewiki_clean(ww);
     free(ww);
     return rc;
+}
+#+END_SRC
+** tie
+Usage: tie UUID1 UUID2
+
+Just like =link=, except that it checks to see
+if there is a previous link to ensure that it is
+not done twice.
+
+In other words, it makes a call to =linked=, then =link=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_tie(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_tie(int argc, char *argv[])
+{
+    int rc;
+
+    rc = p_linked(argc, argv);
+
+    if (rc) return rc;
+
+    return p_link(argc, argv);
 }
 #+END_SRC
