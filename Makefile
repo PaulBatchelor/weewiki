@@ -5,6 +5,7 @@ WWSERVER=1
 
 OS=$(shell uname -s)
 
+
 # Janet objects
 OBJ+=\
 	janet/janet.c99\
@@ -48,6 +49,7 @@ default: weewiki orgparse_test
 janet/janet_main.c: orgparse.h weewiki.c
 
 jan.h: jan.c
+zet.h: zet.c
 
 %.o: %.c
 	$(C89) -c $(CFLAGS) $< -o $@
@@ -57,6 +59,7 @@ jan.h: jan.c
 
 weewiki.c: orgparse.h
 weewiki.c: jan.h
+jan.c: zet.h
 
 orgparse.h: orgparse.org
 	$(WORGLE) $<
@@ -84,3 +87,4 @@ clean:
 	$(RM) orgparse.h
 	$(RM) orgparse_test.c
 	$(RM) orgparse_test
+	$(RM) zet.c zet.h
