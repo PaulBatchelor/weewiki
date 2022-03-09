@@ -3085,3 +3085,8 @@ static int p_tie(int argc, char *argv[])
     return p_link(argc, argv);
 }
 #+END_SRC
+
+** TODO belongs
+Usage: belongs UUID
+
+Prints any UUIDs that are linked to UUID.
