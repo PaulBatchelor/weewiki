@@ -1964,6 +1964,7 @@ static int import_values(weewiki_d *ww)
     char *buf;
     int sz;
     char c;
+    int bufsz;
 
     fp = stdin;
 
@@ -1971,7 +1972,8 @@ static int import_values(weewiki_d *ww)
 
     db = weewiki_db(ww);
     sqlite3_exec(db, "BEGIN;\n", NULL, NULL, NULL);
-    buf = calloc(1, 1024);
+    bufsz = 1024;
+    buf = calloc(1, bufsz);
     sz = 0;
 
     while (1) {
@@ -1980,10 +1982,11 @@ static int import_values(weewiki_d *ww)
         buf[sz] = c;
         sz++;
 
-        if (sz == 1023) {
-            fprintf(stderr, "import buffer size too small\n");
-            err = 1;
-            goto clean;
+        if (sz == (bufsz - 1)) {
+            fprintf(stderr,
+                "Warning: long line. Reallocating.\n");
+            bufsz *= 2;
+            buf = realloc(buf, bufsz);
         }
 
         if (c == '\n') {
@@ -1994,9 +1997,8 @@ static int import_values(weewiki_d *ww)
 
     sqlite3_exec(db, "COMMIT;\n", NULL, NULL, NULL);
 
-    clean:
-        free(buf);
-        return err;
+    free(buf);
+    return err;
 }
 
 static int p_import(int argc, char *argv[])

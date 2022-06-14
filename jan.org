@@ -529,3 +529,43 @@ static Janet cfun_zet_resolve(int32_t argc, Janet *argv)
     return janet_wrap_string(janet_string((const unsigned char *)uuid.str, 36));
 }
 #+END_SRC
+** UUID Generator
+Bindings to the internal uuidv4 generator used by
+weewiki.
+
+#+NAME: janet_defs
+#+BEGIN_SRC c
+janet_def(env,
+          "ww-zet-uuid-init",
+          janet_wrap_cfunction(cfun_zet_uuid_init),
+          NULL);
+janet_def(env,
+          "ww-zet-uuid-gen",
+          janet_wrap_cfunction(cfun_zet_uuid_gen),
+          NULL);
+#+END_SRC
+
+#+NAME: janet_funcs
+#+BEGIN_SRC c
+static Janet cfun_zet_uuid_gen(int32_t argc, Janet *argv)
+{
+    wwzet_uuid uuid;
+
+    janet_fixarity(argc, 0);
+
+    wwzet_uuid_init(&uuid);
+    wwzet_uuid_generate(&uuid);
+
+    return janet_wrap_string(janet_string((const unsigned char *)uuid.str, 36));
+}
+#+END_SRC
+
+#+NAME: janet_funcs
+#+BEGIN_SRC c
+static Janet cfun_zet_uuid_init(int32_t argc, Janet *argv)
+{
+    wwzet_uuid_rng_init();
+    return janet_wrap_nil();
+}
+#+END_SRC
+
