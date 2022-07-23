@@ -5,7 +5,6 @@ WWSERVER=1
 
 OS=$(shell uname -s)
 
-
 # Janet objects
 OBJ+=\
 	janet/janet.c99\
@@ -23,6 +22,13 @@ OBJ += uuid4/uuid4.o
 
 # Linenoise library (with musl strdup)
 OBJ += linenoise/linenoise.c99
+
+# miniz (for 1-bit png support)
+OBJ += miniz/miniz.o
+
+# btprnt (1-bit drawing)
+OBJ += btprnt/btprnt.o
+OBJ += btprnt/jbtprnt.c99
 
 CFLAGS += -g -Wall -O3 -I.
 

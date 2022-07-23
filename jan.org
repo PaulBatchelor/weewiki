@@ -159,6 +159,7 @@ void weewiki_janet_cfuns(JanetTable *env);
 #+BEGIN_SRC c
 <<janet_funcs>>
 void weewiki_janet_sqlite(JanetTable *env);
+void weewiki_janet_btprnt(JanetTable *env);
 void weewiki_janet_cfuns(JanetTable *env)
 {
     janet_def(env,
@@ -207,6 +208,7 @@ void weewiki_janet_cfuns(JanetTable *env)
               NULL);
     <<janet_defs>>
     weewiki_janet_sqlite(env);
+    weewiki_janet_btprnt(env);
     janet_dostring(env,
                     "(defn html-header () ())"
                     "(defn html-footer () ())"
