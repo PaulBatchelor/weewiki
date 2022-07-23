@@ -29,6 +29,7 @@ OBJ += miniz/miniz.o
 # btprnt (1-bit drawing)
 OBJ += btprnt/btprnt.o
 OBJ += btprnt/jbtprnt.c99
+OBJ += btprnt/png1bit.o
 
 CFLAGS += -g -Wall -O3 -I.
 

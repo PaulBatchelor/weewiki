@@ -5,6 +5,8 @@
 #include "janet/janet.h"
 #include "cherry.xbm"
 
+void btprnt_write_png(btprnt *bp, char **out, size_t *sz);
+
 typedef struct btprnt_janet {
     btprnt *b;
 } btprnt_janet;
@@ -766,6 +768,25 @@ static Janet j_bezier(int32_t argc, Janet *argv)
     return janet_wrap_nil();
 }
 
+static Janet write_png(int32_t argc, Janet *argv)
+{
+    btprnt_janet *bj;
+    char *b64;
+    JanetString jstr;
+    size_t sz;
+    janet_fixarity(argc, 1);
+
+    bj = janet_getabstract(argv, 0, &btprnt_type);
+
+    sz = 0;
+    btprnt_write_png(bj->b, &b64, &sz);
+
+    jstr = janet_string((unsigned char *)b64, sz);
+
+    free(b64);
+    return janet_wrap_string(jstr);
+}
+
 #define F(n) "btprnt/"n
 
 static const JanetReg cfuns[] =
@@ -820,6 +841,7 @@ static const JanetReg cfuns[] =
      j_bezier,
      "draws a bezier line."
     },
+    {F("write-png"), write_png, "writes monochrome png."},
     {NULL, NULL, NULL}
 };
 #undef F
