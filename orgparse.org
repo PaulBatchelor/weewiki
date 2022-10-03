@@ -2382,7 +2382,7 @@ A small but important detail: tags in org mode work on a
 single line. If a line break is found before a matching tag,
 it breaks out.
 
-Another detail: tags can't have spaces at the immediately
+Another detail: tags can't have spaces immediately
 after or before the tags. * this* is not a tag. *this * is
 also not a tag.
 
