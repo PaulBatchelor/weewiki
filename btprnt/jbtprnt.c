@@ -787,6 +787,49 @@ static Janet write_png(int32_t argc, Janet *argv)
     return janet_wrap_string(jstr);
 }
 
+static Janet tile(int32_t argc, Janet *argv)
+{
+    btprnt_janet *bj;
+    btprnt_janet *mapj;
+    JanetArray *jreg;
+    btprnt_region reg;
+    int xpos, ypos;
+    int mapx, mapy;
+    int tilew, tileh;
+    int scale;
+    int color;
+
+    janet_fixarity(argc, 11);
+
+    bj = janet_getabstract(argv, 0, &btprnt_type);
+    mapj = janet_getabstract(argv, 1, &btprnt_type);
+    jreg = janet_getarray(argv, 2);
+    janet2reg(bj->b, jreg, &reg);
+
+    xpos = janet_getinteger(argv, 3);
+    ypos = janet_getinteger(argv, 4);
+
+    mapx = janet_getinteger(argv, 5);
+    mapy = janet_getinteger(argv, 6);
+
+    tilew = janet_getinteger(argv, 7);
+    tileh = janet_getinteger(argv, 8);
+
+    scale = janet_getinteger(argv, 9);
+
+    color = janet_getinteger(argv, 10);
+
+    btprnt_draw_tile(&reg,
+                     btprnt_buf_get(mapj->b),
+                     xpos, ypos,
+                     mapx, mapy,
+                     tilew, tileh,
+                     scale,
+                     color);
+
+    return janet_wrap_nil();
+}
+
 #define F(n) "btprnt/"n
 
 static const JanetReg cfuns[] =
@@ -841,7 +884,8 @@ static const JanetReg cfuns[] =
      j_bezier,
      "draws a bezier line."
     },
-    {F("write-png"), write_png, "writes monochrome png."},
+    {F("write-png"), write_png, "writes a monochrome png."},
+    {F("tile"), tile, "Draws a tile from a tilemap."},
     {NULL, NULL, NULL}
 };
 #undef F
