@@ -405,7 +405,6 @@ static Janet j_drawbits(int32_t argc, Janet *argv)
 
     for (x = 0; x < w; x++) {
         for (y = 0; y < h; y++) {
-            /* TODO: get pixel */
             int p;
             int pos;
             int byte;
@@ -890,6 +889,8 @@ static const JanetReg cfuns[] =
 };
 #undef F
 
+void janet_macfont(JanetTable *env, const char *name);
 void weewiki_janet_btprnt(JanetTable *env) {
     janet_cfuns(env, NULL, cfuns);
+    janet_macfont(env, "btprnt");
 }
