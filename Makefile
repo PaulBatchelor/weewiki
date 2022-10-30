@@ -33,8 +33,7 @@ OBJ += btprnt/png1bit.o
 OBJ += btprnt/macfont.o
 OBJ += btprnt/jmacfont.c99
 
-#CFLAGS += -g -Wall -O3 -I.
-CFLAGS += -g -Wall -O0 -I.
+CFLAGS += -g -Wall -O3 -I.
 
 ifneq ($(OS), Darwin)
 CFLAGS += -Wl,--export-dynamic
