@@ -334,7 +334,6 @@ void btprnt_write_png(btprnt *bp, char **out, size_t *sz)
     *sz = b64_sz;
 
     free(writer.buf);
-    return b64;
 }
 
 static char encoding_table[] = {
