@@ -498,9 +498,7 @@ static void html_bold(void *ud,
 #+BEGIN_SRC c
 orgparse_set_bold(op, html_bold);
 #+END_SRC
-** DONE Aux
-CLOSED: [2020-01-15 Wed 15:40]
-- State "DONE"       from "TODO"       [2020-01-15 Wed 15:40]
+** Aux
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_aux(void *ud,
@@ -552,9 +550,7 @@ static void html_code(void *ud,
 #+BEGIN_SRC c
 orgparse_set_code(op, html_code);
 #+END_SRC
-** DONE Code Block
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "TODO"       [2020-01-16 Thu 18:15]
+** Code Block
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
 static void html_codeblock(void *ud,
@@ -586,9 +582,7 @@ static void html_codeblock(void *ud,
 #+BEGIN_SRC c
 orgparse_set_codeblock(op, html_codeblock);
 #+END_SRC
-** DONE Name
-CLOSED: [2020-01-16 Thu 18:15]
-- State "DONE"       from "TODO"       [2020-01-16 Thu 18:15]
+** Name
 Ignored for now.
 #+NAME: orgparse_callbacks
 #+BEGIN_SRC c
