@@ -2779,6 +2779,12 @@ static int parse_comment(orgparse_state *state)
         if (txt[n] == '\n') break;
     }
 
+    /* TODO: this might need to be (n - start) + 1
+     * I'm pretty sure this offset needs to include 
+     * the line break. Otherwise, it will print weird
+     * characters sometimes in ww-server.
+     * AKA: the "extra period" bug
+     */
     *pos += (n - start);
 
     return 1;
