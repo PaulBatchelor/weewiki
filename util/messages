@@ -1,0 +1,36 @@
+
+#!/bin/sh
+
+if [ "$#" -lt 1 ]
+then
+echo "messages: get messages assoicated with UUID"
+echo "usage: $0 search_pattern"
+exit 1
+fi
+
+UUID=$(weewiki zet resolve $1)
+
+if [[ ! $? -eq 0 ]]
+then
+    exit 1
+fi
+
+function query() {
+sqlite3 a.db <<EOF
+.mode tabs
+select strftime('%Y-%m-%d', time) as time,
+UUID, value FROM wikizet
+WHERE value LIKE ">%"
+AND
+UUID IN (SELECT UUID from wikizet WHERE
+value is '#' || '$1'
+)
+
+;
+EOF
+
+}
+
+query $UUID | \
+    weewiki zet ergoify | \
+    awk -F '\t' '{print "---"; print $1, substr($2, 1, 9), $3}'

@@ -1,0 +1,21 @@
+#!/bin/sh
+if [ "$#" -lt 2 ]
+then
+echo "Usage: $0 UUID TAG"
+fi
+
+
+UUID=$(weewiki zet resolve $1)
+
+if [[ ! $? -eq 0 ]]
+then
+    exit 1
+fi
+
+shift 1
+TAGS=$*
+
+for t in $TAGS
+do
+    weewiki zet tie $UUID @$t
+done

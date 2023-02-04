@@ -1,0 +1,30 @@
+#!/bin/sh
+if [ "$#" -lt 2 ]
+then
+echo "Add tags to item and dynamically create if they don't exist"
+echo "Usage: $0 UUID TAG"
+fi
+
+
+UUID=$(weewiki zet resolve $1)
+
+if [[ ! $? -eq 0 ]]
+then
+    exit 1
+fi
+
+shift 1
+TAGS=$*
+
+for t in $TAGS
+do
+    LABEL_UUID=$(weewiki zet resolve @$t 2> /dev/null)
+
+    if [[ ! $? -eq 0 ]]
+    then
+        echo "making label $t"
+        LABEL_UUID=$(u/mklabel $t)
+    fi
+
+    weewiki zet tie $UUID $LABEL_UUID
+done

@@ -1,0 +1,2 @@
+#!/bin/sh
+weewiki zet groups $* | awk -F '\t' '{print(substr($1, 0, 8), $2)}'

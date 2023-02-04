@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [[ "$#" -eq 0 ]]
+then
+    echo "Appends a blurb to an object. Can be changed later".
+    echo "Usage: $0 UUID"
+    exit
+fi
+
+UUID=$1
+
+weewiki zet var new $1 blurb
+weewiki zet var set $1 blurb
