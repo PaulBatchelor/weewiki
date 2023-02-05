@@ -1648,6 +1648,8 @@ int ww_zet(int argc, char *argv[])
         return p_tie(argc, argv);
     } else if (!strcmp(argv[0], "belongs")) {
         return p_belongs(argc, argv);
+    } else if (!strcmp(argv[0], "related")) {
+        return p_related(argc, argv);
     } else {
         fprintf(stderr, "Could not find command '%s'\n", argv[0]);
     }
@@ -3202,6 +3204,80 @@ static int p_belongs(int argc, char *argv[])
     rc = sqlite3_prepare_v2(db,
     "SELECT distinct(UUID) from wikizet "
     "WHERE value IS '#' || ?1;"
+    ,
+    -1, &stmt, NULL);
+
+    if (rc) {
+       fprintf(stderr, "SQLite: %s\n", sqlite3_errmsg(db));
+       goto clean;
+    }
+
+    sqlite3_bind_text(stmt, 1, uuid.str, -1, NULL);
+
+    rc = sqlite3_step(stmt);
+
+    while (rc == SQLITE_ROW) {
+        const unsigned char *s;
+        s = sqlite3_column_text(stmt, 0);
+        printf("%s\n", s);
+        rc = sqlite3_step(stmt);
+    }
+
+    sqlite3_finalize(stmt);
+
+    clean:
+    weewiki_close(ww);
+    weewiki_clean(ww);
+    free(ww);
+    return rc;
+}
+#+END_SRC
+** related
+Usage: related UUID
+
+Given the UUID of an item, print all the items it ties to.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_related(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int p_related(int argc, char *argv[])
+{
+    weewiki_d *ww;
+    wwzet_uuid uuid;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s UUID\n", argv[0]);
+        return -1;
+    }
+
+    ww = malloc(weewiki_sizeof());
+    weewiki_init(ww);
+    weewiki_open(ww, weewiki_dbname_get());
+
+    db = weewiki_db(ww);
+    rc = 0;
+
+    rc = wwzet_uuid_resolve(ww,
+                            argv[1],
+                            strlen(argv[1]),
+                            &uuid);
+    if (rc) {
+        fprintf(stderr, "Could not resolve %s\n", argv[1]);
+        goto clean;
+    }
+
+    rc = sqlite3_prepare_v2(db,
+    "SELECT substr(value, 2) from wikizet "
+    "WHERE "
+    "UUID IS ?1 AND "
+    "value LIKE '#%';"
     ,
     -1, &stmt, NULL);
 
