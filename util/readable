@@ -1,0 +1,11 @@
+ZET="weewiki zet"
+while read -r line
+do
+    NAME=$($ZET entry $line |\
+        cut -f 3 |\
+        grep -v -E "^#|^\$" |\
+        awk '{print substr($0, 2)}'
+        )
+    ERGO=$($ZET ergo $line | awk '{print substr($0, 1, 8)}')
+    printf "[g%s]\t %s\n" $ERGO $NAME
+done
