@@ -187,6 +187,10 @@ void weewiki_janet_cfuns(JanetTable *env)
               janet_wrap_cfunction(cfun_ww_add_page),
               NULL);
     janet_def(env,
+              "ww-del-page",
+              janet_wrap_cfunction(cfun_ww_del_page),
+              NULL);
+    janet_def(env,
               "ww-add-link",
               janet_wrap_cfunction(cfun_ww_add_link),
               NULL);
@@ -331,6 +335,30 @@ static Janet cfun_ww_add_page(int32_t argc, Janet *argv)
     ww = weewiki_get();
 
     weewiki_add_page(ww, key, val);
+
+    return janet_wrap_nil();
+}
+#+END_SRC
+** Delete Page
+Deletes a Page from the database.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static Janet cfun_ww_del_page(int32_t argc, Janet *argv);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static Janet cfun_ww_del_page(int32_t argc, Janet *argv)
+{
+    const char *key;
+    weewiki_d *ww;
+
+    janet_fixarity(argc, 1);
+    key = (const char *)janet_getstring(argv, 0);
+    ww = weewiki_get();
+
+    weewiki_del_page(ww, key);
 
     return janet_wrap_nil();
 }

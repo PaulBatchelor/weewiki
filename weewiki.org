@@ -527,6 +527,39 @@ void weewiki_add_page(weewiki_d *ww,
     sqlite3_finalize(stmt);
 }
 #+END_SRC
+** Delete Page
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void weewiki_del_page(weewiki_d *ww, const char *key);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+void weewiki_del_page(weewiki_d *ww, const char *key)
+{
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    db = ww->db;
+
+    sqlite3_prepare_v2(db,
+                       "DELETE FROM wiki "
+                       "WHERE (key ==?1);",
+                       -1,
+                       &stmt,
+                       NULL);
+    sqlite3_bind_text(stmt, 1, key, -1, NULL);
+    rc = sqlite3_step(stmt);
+
+    if (rc != SQLITE_DONE) {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+        rc = 1;
+    }
+
+    sqlite3_finalize(stmt);
+}
+#+END_SRC
 ** Link Page
 #+NAME: funcdefs
 #+BEGIN_SRC c
