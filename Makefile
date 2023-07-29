@@ -14,6 +14,7 @@ OBJ+=\
 	janet/janet_sqlite.c99 \
 	janet/jpm.gen.c99 \
 	janet/jpm.c99 \
+	janet/json.c99 \
 
 OBJ+=weewiki.o jan.c99 keyscrape.o zet.o crate.o
 
