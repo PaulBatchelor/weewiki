@@ -2321,8 +2321,9 @@ static int p_dump(int argc, char *argv[])
                        "SELECT wiki.key, wiki.value "
                        "FROM wiki LEFT JOIN wikilinks "
                        "ON wiki.key = wikilinks.key "
-                       "WHERE wikilinks.key IS NULL;"
-                       "FROM wikilinks;",
+                       "WHERE wikilinks.key IS NULL "
+                       "ORDER BY wiki.key;",
+                       /* "FROM wikilinks;", */
                        -1,
                        &stmt,
                        NULL);
