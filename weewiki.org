@@ -2268,6 +2268,7 @@ static int p_janet(int argc, char *argv[])
 }
 #+END_SRC
 * Dump
+** Version 1
 Dumps all of the contents of a weewiki database into a
 janet script. When the script is run with =weewiki janet=,
 it will regenerate the database.
@@ -2382,6 +2383,139 @@ static int p_dump(int argc, char *argv[])
     return 0;
 }
 #+END_SRC
+** Version 2
+In this version, I make something that doesn't use Janet
+scripting, instead opting for a syntax resembling dagzet
+where every line starts with a two-letter command.
+
+#+NAME: argparse_entries
+#+BEGIN_SRC c
+{"dump2", 5, p_dump2, NULL},
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int p_dump2(int argc, char *argv[]);
+#+END_SRC
+
+#+NAME: functions
+#+BEGIN_SRC c
+static int p_dump2(int argc, char *argv[])
+{
+    weewiki_d ww;
+    sqlite3 *db;
+    int rc;
+    const char *key, *value, *fname;
+    sqlite3_stmt *stmt;
+    FILE *fp;
+
+    if (argc < 2) {
+        fp = stdout;
+    } else {
+        fp = fopen(argv[1], "w");
+        if (fp == NULL) {
+            fprintf(stderr,
+                    "Could not open '%s' for writing.\n",
+                    argv[1]);
+            return 1;
+        }
+    }
+
+    weewiki_init(&ww);
+    if (argc >= 3) {
+        weewiki_open(&ww, argv[2]);
+    } else {
+        weewiki_open(&ww, weewiki_dbname_get());
+    }
+
+    db = ww.db;
+
+    sqlite3_prepare_v2(db,
+                       "SELECT wiki.key, wiki.value "
+                       "FROM wiki LEFT JOIN wikilinks "
+                       "ON wiki.key = wikilinks.key "
+                       "WHERE wikilinks.key IS NULL "
+                       "ORDER BY wiki.key;",
+                       /* "FROM wikilinks;", */
+                       -1,
+                       &stmt,
+                       NULL);
+
+    fprintf(fp, "## open and clear wiki db\n\n");
+    fprintf(fp, "op a.db\n");
+    fprintf(fp, "cl\n");
+
+    fprintf(fp, "\n# unlinked pages\n\n");
+
+    while (1) {
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_ROW) break;
+        key = (const char *)sqlite3_column_text(stmt, 0);
+        value = (const char *)sqlite3_column_text(stmt, 1);
+        if (value == NULL) {
+            fprintf(fp, "(ww-add-page \"%s\" \"\")\n", key);
+            fprintf(fp, "pg %s\n", key);
+        } else {
+            size_t slen;
+            size_t start;
+            size_t p;
+            char prev;
+            fprintf(fp, "pg %s\n", key);
+            slen = strlen(value);
+            prev = 0;
+            start = 0;
+            for (p = 0; p < slen; p++) {
+                char c;
+                c = value[p];
+                if (c == '\n') {
+                    if (prev == '\n') {
+                        fprintf(fp, "br\n");
+                    } else {
+                        fprintf(fp, "ln ");
+                        fwrite(&value[start], 1, p - start, fp);
+                        fprintf(fp, "\n");
+                    }
+                    start = p + 1;
+                }
+
+                prev = c;
+            }
+        }
+    }
+
+
+    sqlite3_finalize(stmt);
+
+    sqlite3_prepare_v2(db,
+                       "SELECT key, filename "
+                       "FROM wikilinks;",
+                       -1,
+                       &stmt,
+                       NULL);
+
+    fprintf(fp, "\n## linked pages\n\n");
+
+    while (1) {
+        rc = sqlite3_step(stmt);
+        if (rc != SQLITE_ROW) break;
+        key = (const char *)sqlite3_column_text(stmt, 0);
+        fname = (const char *)sqlite3_column_text(stmt, 1);
+        fprintf(fp, "lp %s %s\n", key, fname);
+    }
+
+
+    sqlite3_finalize(stmt);
+
+    fprintf(fp, "\n## sync and close\n\n");
+    fprintf(fp, "sn\n");
+    fprintf(fp, "cl\n");
+
+    weewiki_close(&ww);
+    weewiki_clean(&ww);
+    return 0;
+}
+#+END_SRC
+
 * Parse
 The =parse= command will parse an org file via orgparse
 and write the HTML output. This is primarily
